@@ -1,0 +1,21 @@
+{
+  "parameters": {
+    "duration": 200,
+    "depth": 30,
+    "heading": 50,
+    "rpm": 1525,
+    "current": 0.5,
+    "current_direction": 170,
+    "no_animation": false
+  },
+  "sample_time_s": 0.02,
+  "samples": 10001,
+  "simulation_duration_s": 200.0,
+  "computation_time_s": 1.2107795000001715,
+  "all_states_finite": true,
+  "final_depth_m": 29.74975474011636,
+  "final_heading_deg": 49.998898184993784,
+  "final_depth_error_m": -0.2502452598836413,
+  "final_heading_error_deg": -0.0011018150062227505,
+  "path_length_m": 453.5508894768102
+}
