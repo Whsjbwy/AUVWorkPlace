@@ -1,0 +1,98 @@
+{
+  "paper": {
+    "title": "Dynamic obstacle avoidance algorithm for UUV based on physics prior LSTM network model and dynamic window approach",
+    "doi": "10.1016/j.oceaneng.2026.124503",
+    "source": "user supplied P25.pdf; PDF page numbers, not journal pagination"
+  },
+  "terrain_table1_pdfp3": {
+    "map_m": [
+      1000,
+      1000
+    ],
+    "maximum_depth_m": 200,
+    "amplitude_m": 150,
+    "scale": 150,
+    "octaves": 2,
+    "shaping_exponent": 3,
+    "seed": null,
+    "grid_spacing_m": null
+  },
+  "dynamic_obstacles_table2_pdfp5": {
+    "minimum_separation_m": 25,
+    "speed_mps": [
+      0.2,
+      2.5
+    ],
+    "pitch_deg": [
+      -30,
+      30
+    ],
+    "yaw_deg": [
+      0,
+      360
+    ],
+    "surge_acceleration_mps2": [
+      -0.5,
+      0.5
+    ],
+    "body_q_max_deg_s": 8,
+    "body_r_max_deg_s": 15,
+    "kp": [
+      0.6,
+      1,
+      0.8
+    ],
+    "ki": [
+      0.08,
+      0.15,
+      0.1
+    ],
+    "target_update_s": 15,
+    "note": "NOT the AUV hull or actuator parameters"
+  },
+  "simulation_table4_pdfp11": {
+    "map_extent_m": [
+      1000,
+      1000,
+      200
+    ],
+    "obstacle_count": 120,
+    "obstacle_radius_m": [
+      2,
+      12
+    ],
+    "sonar_range_m": 150,
+    "horizontal_full_fov_deg": 90,
+    "vertical_full_fov_deg": 6,
+    "horizontal_resolution_deg": 1,
+    "vertical_resolution_deg": 6
+  },
+  "predictor_table3_table5": {
+    "history_steps": 6,
+    "features": 9,
+    "future_steps": 3,
+    "lstm_layers": 2,
+    "hidden_size": 256,
+    "dropout": 0.2,
+    "output_heads": 3,
+    "epochs": 150,
+    "batch_size": 256,
+    "optimizer": "AdamW",
+    "learning_rate": 0.0001,
+    "weight_decay": 0.0005,
+    "gradient_clip": 1,
+    "warmup_epochs": 20,
+    "physical_step_s": null,
+    "detailed_output_head_layers": null
+  },
+  "auv_hydrodynamic_parameters_in_p25": {
+    "mass_kg": null,
+    "length_m": null,
+    "diameter_m": null,
+    "inertia": null,
+    "added_mass": null,
+    "actuator_lags_s": null,
+    "exact_dwa_control_limits": null
+  },
+  "note": "Reference-only, NOT a runnable ExperimentConfig. Null means not established from supplied paper; do not replace with a guess."
+}

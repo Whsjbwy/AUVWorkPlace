@@ -22,10 +22,12 @@ def main():
     parser.add_argument("--current", type=float, default=0.5)
     parser.add_argument("--current-direction", type=float, default=170)
     parser.add_argument("--no-animation", action="store_true")
+    parser.add_argument("--out", help="Separate output directory (default: results/remus100)")
     args = parser.parse_args()
-    if not np.isfinite(list(vars(args).values())).all() or args.duration <= 0:
+    if not np.isfinite([args.duration, args.depth, args.heading, args.rpm,
+                        args.current, args.current_direction]).all() or args.duration <= 0:
         parser.error("Parameters must be finite and duration must be positive")
-    out = Path(__file__).resolve().parent / "results" / "remus100"
+    out = Path(args.out) if args.out else Path(__file__).resolve().parent / "results" / "remus100"
     out.mkdir(parents=True, exist_ok=True)
     dt = 0.02
     vehicle = remus100("depthHeadingAutopilot", args.depth, args.heading,

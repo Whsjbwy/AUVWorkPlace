@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-10-11T21:41:02.426814+08:00",
+  "branch": "research/stage2-baseline",
+  "origin": "https://github.com/Whsjbwy/AUVWorkPlace.git",
+  "latest_test_report": "results_stage2/review_20261011_publication_tests/regression_report.json",
+  "pytest": {
+    "tests": 351,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "all_checks_passed": true,
+  "staged_review_scope": "101 payload files before this quality record; final metadata-only staging rechecked before commit",
+  "staged_payload_files": 101,
+  "payload_bytes": 8056919,
+  "syntax_compiled_files": 58,
+  "syntax_errors": 0,
+  "secret_findings_files_only": [],
+  "forbidden_paths": [],
+  "staged_deletions": [],
+  "protected_original_files_changed": false,
+  "staged_diff_whitespace_errors": 0,
+  "collision_or_margin_threshold_relaxed": false,
+  "extra_file_digest_checks_used": false,
+  "remote_ci": "will run after publication; local tests are not remote CI results"
+}
