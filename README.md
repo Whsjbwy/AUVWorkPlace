@@ -2,17 +2,31 @@
 
 阶段3研究分支新增共同六自由度实验配置：因果感知记忆、候选/应急动作对照、普通已知海床三维A*和可插拔障碍预测协议。阶段2默认值与原REMUS物理模型保留。当前进展及真实失败见 [共同基线](docs_stage3/COMMON_BASELINE.md)、[阶段3测试记录](docs_stage3/TEST_REPORT.md)。
 
+阶段3本轮最终全量回归556项通过；已实际执行记忆15、候选16、预测器8组及独立地形实验。研究性能失败仍存在，不能将全部代码测试通过当作全部避障安全。逐配置结果与因果比较范围见[实验协议](docs_stage3/EXPERIMENT_PROTOCOL.md)、[候选对照](docs_stage3/experiments/CANDIDATE_PILOT_SUMMARY.md)、[CA/PPLNM对照](docs_stage3/experiments/PREDICTOR_PILOT_SUMMARY.md)和[地形程序修复消融](docs_stage3/TERRAIN_ABLATION_README.md)。
+
 ```powershell
 $env:PYTHONUTF8 = '1'
 $env:MPLBACKEND = 'Agg'
 .\.venv-stage1\Scripts\python.exe -m pytest PythonVehicleSimulator/tests tests_stage1 tests_stage2 tests_stage3 -q
 .\.venv-stage1\Scripts\python.exe run_stage3.py simulate --backend remus6dof --scenario crossing3d --out results_stage3/my_crossing
 .\.venv-stage1\Scripts\python.exe run_stage3.py simulate --scenario terrain3d --terrain-guidance coarse3d_astar --out results_stage3/my_terrain
+.\.venv-stage1\Scripts\python.exe run_stage3.py simulate --scenario perlin_cruise_constrained3d --terrain-guidance coarse3d_astar --max-time-s 200 --out results_stage3/my_perlin
 .\.venv-stage1\Scripts\python.exe run_stage3.py simulate --scenario multi_crossing3d --memory-policy retain_uncertain --candidate-budget 18 --out results_stage3/my_memory
 Start-Process .\results_stage3\my_crossing\replay_3d.html
 ```
 
 每次使用新输出目录。图像、GIF、三维HTML回放及计划/执行误差分别保存；实际轨迹始终来自六自由度模型。记忆膨胀和几何子目标都不代表安全保证。
+
+预注册对照与同锚点评价：
+
+```powershell
+.\.venv-stage1\Scripts\python.exe scripts_stage3/run_experiments.py --suite memory --workers 1 --output results_stage3/my_memory_matrix
+.\.venv-stage1\Scripts\python.exe scripts_stage3/run_experiments.py --suite candidate --workers 1 --output results_stage3/my_candidate_matrix
+.\.venv-stage1\Scripts\python.exe scripts_stage3/run_experiments.py --suite predictor --workers 1 --output results_stage3/my_predictor_pairs
+.\.venv-stage1\Scripts\python.exe scripts_stage3/analyze_prediction_errors.py --source results_stage3/my_crossing --out results_stage3/my_paired_errors
+```
+
+`--seeds 7 17`扩展独立配置下的种子记录，`--workers 2`可并发但会影响墙钟延迟。已知失败、Perlin初始化协议和结果解释见 [失败分析](docs_stage3/FAILURE_ANALYSIS.md)。原失败Perlin任务保留；新增`perlin_cruise_constrained3d`只增加与算法无关的原模型24秒中性航行初始化准入，新旧任务不能混合计算成功率。
 
 同一仓库保留原 Fossen REMUS 100 六自由度仿真，整合阶段1三维海底、障碍、声呐、物理先验 LSTM 与三维 DWA，并新增使用原REMUS控制器和执行器的六自由度闭环避障基线。基础仿真与已有模型预测均支持CPU。
 

@@ -7,8 +7,8 @@ import pytest
 from auv3d.scenarios import make_stage2_scenario
 from auv3d.stage2_config import Stage2Config
 from auv3d.stage3_terrain import (
-    TerrainGuideConfig, TerrainRouteError, build_terrain_guidance,
-    make_constrained_perlin_scene,
+    TerrainGuideConfig, TerrainGuidance, TerrainRouteError, build_terrain_guidance,
+    make_constrained_perlin_scene, make_cruise_constrained_perlin_scene,
 )
 from auv3d.terrain import HeightField
 
@@ -201,3 +201,108 @@ def test_invalid_terrain_cannot_produce_false_safe_route():
     with pytest.raises(ValueError, match="finite"):
         build_terrain_guidance(terrain, [30, 100, 35], [210, 100, 35],
             body_radius_m=.81, safety_margin_m=1, depth_limit_m=100)
+
+
+@pytest.fixture(scope="module")
+def cruise_perlin_scene():
+    return make_cruise_constrained_perlin_scene(Stage2Config())
+
+
+def test_independent_perlin_version_retains_original_failure_scene(cruise_perlin_scene):
+    original = make_constrained_perlin_scene(Stage2Config())
+    np.testing.assert_array_equal(original.start_eta[:3], [550, 360, 70])
+    np.testing.assert_array_equal(original.goal, [550, 540, 70])
+    np.testing.assert_array_equal(cruise_perlin_scene.start_eta[:3], [410, 400, 70])
+    np.testing.assert_array_equal(cruise_perlin_scene.goal, [590, 400, 70])
+    np.testing.assert_array_equal(original.terrain.depths, cruise_perlin_scene.terrain.depths)
+    assert cruise_perlin_scene.name == "perlin_cruise_constrained3d"
+    assert cruise_perlin_scene.metadata["straight_line_clearance_m"] < 1
+    assert cruise_perlin_scene.metadata["initialization_cruise_verified"] is True
+    assert cruise_perlin_scene.metadata["initialization_checked_physical_intervals"] == 1200
+    assert "no entire-task reachability" in cruise_perlin_scene.metadata["initialization_validation_scope"]
+
+
+def test_neutral_cruise_admission_really_uses_original_full_physical_rollout(cruise_perlin_scene):
+    from auv3d.stage2_simulation import initialize_plant
+    from auv3d.adapters.remus_guidance import ReferenceAction, predict_reference
+    cfg=Stage2Config()
+    scene=cruise_perlin_scene
+    plant=initialize_plant(scene,cfg)
+    action=ReferenceAction(float(scene.start_eta[2]),float(scene.start_eta[5]),cfg.nominal_rpm)
+    predicted=predict_reference(plant,action,24.,cfg.physics_dt,record_controls=False)
+    assert len(predicted.positions)==1201
+    gap=min(scene.terrain.segment_clearance(a,b,cfg.body_radius_m)
+            for a,b in zip(predicted.positions[:-1],predicted.positions[1:]))
+    depth_gap=float((cfg.depth_limit_m-cfg.body_radius_m-predicted.positions[:,2]).min())
+    assert min(gap,depth_gap)>=cfg.safety_margin_m
+    assert min(gap,depth_gap)==pytest.approx(scene.metadata["initialization_cruise_clearance_m"])
+    assert plant.time_s==0  # prediction cannot advance the initialized live object
+    attempts=scene.metadata["initialization_admission_attempts"]
+    assert [attempt["pair_index"] for attempt in attempts]==[48,84,88,93]
+    assert all(not attempt["initialization_cruise_verified"] for attempt in attempts[:-1])
+    assert attempts[-1]["initialization_cruise_verified"] is True
+
+
+def test_scene_admission_does_not_consult_dwa_predictor_or_planning_horizon(monkeypatch,cruise_perlin_scene):
+    from auv3d.remus_planner import RemusDWA
+    from auv3d.prediction import CAPredictor
+    def forbidden(*args,**kwargs):
+        raise AssertionError("scene admission must not call a planner or obstacle predictor")
+    monkeypatch.setattr(RemusDWA,"plan",forbidden)
+    monkeypatch.setattr(CAPredictor,"predict",forbidden)
+    cfg=replace(Stage2Config(),candidate_budget=45,shortlist_policy="ranked",
+                terrain_guidance="coarse3d_astar",horizon_s=9.)
+    scene=make_cruise_constrained_perlin_scene(cfg)
+    np.testing.assert_array_equal(scene.start_eta,cruise_perlin_scene.start_eta)
+    np.testing.assert_array_equal(scene.goal,cruise_perlin_scene.goal)
+    assert scene.metadata["initialization_cruise_horizon_s"]==24
+    assert scene.metadata["planner_or_predictor_used_for_scene_selection"] is False
+
+
+def test_actual_cross_corner_lookahead_cannot_lock_progress_at_missed_waypoint(cruise_perlin_scene):
+    """Recorded original-run states; no tolerance, lookahead or goal change."""
+    guide=build(cruise_perlin_scene,TerrainGuideConfig(mode="coarse3d_astar"))
+    guide.current_target([410.,400.,70.])
+    guide.current_target([539.5704650285843,429.2783078300442,67.64181979105591])
+    # By this actual state the vehicle has passed the first corner and is
+    # adjacent to the following segment, although its earlier closest distance
+    # to the first waypoint was 7.68 m, outside the unchanged 6 m tolerance.
+    target=guide.current_target([564.6422180401576,421.9423979705962,65.50489481301044])
+    first_length=np.linalg.norm(guide.path[1]-guide.path[0])
+    assert guide.progress_m > first_length+1
+    assert target[0] > 565.3653161661475+1
+    later=guide.current_target([584.6861979396269,404.4925762680287,64.14227432859161])
+    np.testing.assert_allclose(later,cruise_perlin_scene.goal,rtol=0,atol=1e-10)
+    # Guidance cannot change the final criterion: this recorded state remains
+    # outside the original 5 m goal ball despite receiving the correct target.
+    assert np.linalg.norm(np.array([584.6861979396269,404.4925762680287,64.14227432859161])
+                          -cruise_perlin_scene.goal)>Stage2Config().goal_tolerance_m
+
+
+def test_near_self_returning_route_cannot_jump_over_unvisited_remote_corners():
+    terrain=HeightField.flat(260,240,90.)
+    path=np.array([[30.,30.,35.],[180.,30.,35.],[180.,180.,35.],
+                   [30.,180.,35.],[30.,32.,35.],[180.,32.,35.]])
+    guide=TerrainGuidance(terrain,path,path[-1],Stage2Config().body_radius_m,1.,100.,
+                         TerrainGuideConfig(mode="coarse3d_astar"),{})
+    guide.current_target(path[0])
+    target=guide.current_target([70.,32.,35.])
+    # This actual point lies on the final route leg but is still far before
+    # the first corner. A global nearest-segment projection would skip 600 m.
+    assert guide.progress_m==pytest.approx(40.)
+    np.testing.assert_allclose(target,[95.,30.,35.],rtol=0,atol=1e-10)
+    guide.current_target([60.,32.,35.])
+    assert guide.progress_m==pytest.approx(40.)
+
+
+def test_cross_corner_progress_requires_original_safe_terrain_connection(ridge_route):
+    scene,existing=ridge_route
+    guide=build(scene,existing.config)
+    initial=guide.current_target(scene.start_eta[:3])
+    assert np.isfinite(initial).all()
+    # This state lies geometrically past the first corner's normal plane,
+    # but inside the seabed. It cannot certify joining the next route segment.
+    guide.current_target([140.,110.,45.])
+    first_length=np.linalg.norm(guide.path[1]-guide.path[0])
+    assert guide.progress_m<=first_length+1e-10
+    assert guide.unreachable_target_count==1

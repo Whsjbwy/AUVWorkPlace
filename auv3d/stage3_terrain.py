@@ -257,15 +257,35 @@ class TerrainGuidance:
         actual = _point(actual_position, "actual_position")
         if self.config.mode == "direct" or len(self.path) <= 1:
             return self.final_goal.copy()
-        # Only the current segment may advance progress; a nearby, later leg
-        # cannot teleport the vehicle across a ridge or complete the task.
+        # Consider only the current and immediately adjacent route segment.
+        # Cross-segment lookahead may round a corner outside the waypoint ball;
+        # requiring that ball forever would lock progress and leave the target
+        # behind an actually advancing vehicle. A distant self-near route leg
+        # must not become a shortcut over unvisited intermediate corners.
         while self._segment < len(self._lengths):
             start, end = self.path[self._segment:self._segment+2]
             length = self._lengths[self._segment]
             fraction = float(np.clip(np.dot(actual-start, end-start)/max(length**2, 1e-12), 0, 1))
             self._progress = max(self._progress, self._distances[self._segment]+fraction*length)
-            if (np.linalg.norm(actual-end) <= self.config.waypoint_tolerance_m
-                    and self._segment < len(self._lengths)-1):
+            advance = np.linalg.norm(actual-end) <= self.config.waypoint_tolerance_m
+            if not advance and self._segment < len(self._lengths)-1:
+                following = self.path[self._segment+2]
+                next_delta = following-end
+                next_fraction = float(np.clip(np.dot(actual-end, next_delta)
+                    /max(np.dot(next_delta, next_delta), 1e-12), 0, 1))
+                next_projection = end+next_fraction*next_delta
+                current_projection = start+fraction*(end-start)
+                nearby_corner = np.linalg.norm(actual-end) <= self.config.lookahead_m
+                passed_plane = np.dot(actual-end, end-start) >= 0
+                joined_next = (next_fraction > 0 and
+                    np.linalg.norm(actual-next_projection) < np.linalg.norm(actual-current_projection)-1e-10)
+                # This is a local, actually reached transition. The same
+                # original swept terrain check must permit joining the next
+                # segment; neither lookahead nor proximity certifies safety.
+                advance = bool(nearby_corner and (passed_plane or joined_next)
+                    and _segment_gap(self.terrain, actual, next_projection,
+                        self.radius, self.depth_limit) >= self.margin)
+            if advance and self._segment < len(self._lengths)-1:
                 self._segment += 1
                 self._progress = max(self._progress, self._distances[self._segment])
                 continue
@@ -369,3 +389,86 @@ def make_constrained_perlin_scene(cfg):
                       "motion_information": "no dynamic obstacles in this terrain-isolation scene",
                       "obstacle_future_information_used": False})
     raise TerrainRouteError("this seed has no admissible terrain-constrained 180-m pair under the predeclared selection rule; seed was not changed")
+
+
+def make_cruise_constrained_perlin_scene(cfg):
+    """Independent Perlin protocol with original-model initialization admission.
+
+    Preserve ``perlin_constrained3d`` and its recorded initialization failure.
+    This new version uses the same fixed geometric pair order, then requires
+    an unchanged-REMUS neutral cruise over the fixed 24-second horizon to
+    satisfy the original swept sphere/margin/depth checks. Selection never
+    calls DWA or an obstacle predictor and never consults navigation outcomes.
+    Admission is finite-horizon initialization evidence, not a guarantee of
+    entire-task reachability or dynamic-obstacle avoidance.
+    """
+    from .adapters.remus_guidance import ReferenceAction, predict_reference
+    from .obstacles import LinearObstacles
+    from .scenarios import Scene
+    from .stage2_simulation import initialize_plant
+
+    cfg.validate()
+    initialization_horizon_s = 24.0
+    original = make_constrained_perlin_scene(cfg)
+    terrain = original.terrain
+    fixed_depth = original.metadata["fixed_depth_m"]
+    half_length = original.metadata["route_chord_m"]/2
+    map_center = np.array([(terrain.xs[0]+terrain.xs[-1])/2,
+                           (terrain.ys[0]+terrain.ys[-1])/2])
+    centers = itertools.product(np.arange(100., terrain.xs[-1]-99., 25.),
+                                np.arange(100., terrain.ys[-1]-99., 25.), (0, 1))
+    ordered = sorted(centers, key=lambda item: (np.sum((np.array(item[:2])-map_center)**2), *item))
+    admissions = []
+    for examined, (north, east, axis) in enumerate(ordered, 1):
+        center = np.array([north, east, fixed_depth])
+        offset = np.zeros(3)
+        offset[axis] = half_length
+        start, goal = center-offset, center+offset
+        if any(min(float(terrain.clearance(p, cfg.body_radius_m)),
+                   cfg.depth_limit_m-cfg.body_radius_m-p[2]) <= cfg.safety_margin_m for p in (start, goal)):
+            continue
+        straight_gap = _segment_gap(terrain, start, goal, cfg.body_radius_m, cfg.depth_limit_m)
+        if straight_gap >= cfg.safety_margin_m:
+            continue
+        yaw = math.atan2(goal[1]-start[1], goal[0]-start[0])
+        scene = Scene("perlin_cruise_constrained3d", terrain, LinearObstacles([], [], []),
+                      np.r_[start, 0., 0., yaw], goal)
+        plant = initialize_plant(scene, cfg)
+        neutral = ReferenceAction(float(start[2]), yaw, cfg.nominal_rpm)
+        predicted = predict_reference(plant, neutral, initialization_horizon_s, cfg.physics_dt,
+                                      record_controls=False)
+        positions = predicted.positions
+        point_gap = min(float(terrain.clearance(positions, cfg.body_radius_m).min()),
+                        float((cfg.depth_limit_m-cfg.body_radius_m-positions[:, 2]).min()))
+        segment_gap = min(_segment_gap(terrain, a, b, cfg.body_radius_m, cfg.depth_limit_m)
+                          for a, b in zip(positions[:-1], positions[1:]))
+        gap = min(point_gap, segment_gap)
+        if not np.isfinite(gap):
+            raise FloatingPointError("neutral-cruise initialization check produced nonfinite clearance")
+        admission = {"pair_index": examined, "start_ned_m": start.tolist(),
+                     "goal_ned_m": goal.tolist(), "straight_line_clearance_m": straight_gap,
+                     "neutral_cruise_clearance_m": gap,
+                     "initialization_cruise_verified": bool(gap >= cfg.safety_margin_m)}
+        admissions.append(admission)
+        if gap < cfg.safety_margin_m:
+            continue
+        scene.metadata = {
+            **original.metadata,
+            "scene_source": "independent initialization-admitted protocol on the unchanged original Perlin map; old failed perlin_constrained3d retained",
+            "selection_rule": "same fixed geometric pair order; additionally admit original-REMUS neutral cruise over a fixed 24-second initialization horizon before selecting the first pair",
+            "candidate_pairs_examined": examined,
+            "straight_line_clearance_m": straight_gap,
+            "initialization_cruise_verified": True,
+            "initialization_validation_scope": "original-model neutral cruise over a fixed 24-second horizon only; no entire-task reachability or dynamic-obstacle guarantee",
+            "initialization_cruise_horizon_s": initialization_horizon_s,
+            "initialization_physics_dt_s": cfg.physics_dt,
+            "initialization_warmup_s": cfg.warmup_s,
+            "initialization_cruise_reference": neutral.as_array().tolist(),
+            "initialization_cruise_clearance_m": gap,
+            "initialization_speed_mps": float(plant.nu[0]),
+            "initialization_checked_physical_intervals": len(positions)-1,
+            "initialization_admission_attempts": admissions,
+            "planner_or_predictor_used_for_scene_selection": False,
+        }
+        return scene
+    raise TerrainRouteError("no fixed Perlin pair passed original-model neutral-cruise initialization admission; no seed or geometry was changed")

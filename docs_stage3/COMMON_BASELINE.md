@@ -12,7 +12,7 @@
 | `shortlist_policy` | `diverse` | `ranked`、`coverage` |
 | `emergency_policy` | `coast` | `verified_backup`，最多8次完整六自由度验证 |
 | `terrain_guidance` | `direct` | 普通已知海床`coarse3d_astar` |
-| `obstacle_predictor` | `ca` | 插件协议见`stage3_forecasting.py`，PPLNM独立开发提交 |
+| `obstacle_predictor` | `ca` | `pplnm`在独立提交接入；9秒后显式延拓或拒绝 |
 
 记忆保留的额外半径是显式工程不确定性，不是经过概率校准的置信界。条件删除依赖声明的双方速度上界；有无界高斯测量噪声时禁用该删除。海床A*不查看动态障碍，也不保证六自由度能执行几何路径。到达判断始终使用原终点，子目标不能制造任务到达。
 

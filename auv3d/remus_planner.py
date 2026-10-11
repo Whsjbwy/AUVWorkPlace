@@ -137,8 +137,8 @@ def _clearance_positions(positions, terrain, forecasts, cfg):
 def trajectory_clearance(states, terrain, tracks, now, cfg, forecast_context=None) -> float:
     """Conservative terrain and swept moving-sphere clearance at physical ticks.
 
-    The obstacle prediction is CA from causal observations. This checks a
-    six-DOF vehicle trajectory against that forecast; unseen motion changes are
+    The configured obstacle predictor receives only causal observations. This
+    checks a six-DOF vehicle trajectory against that forecast; unseen changes are
     handled by the real execution collision monitor, not claimed to be known.
     """
     rows = np.asarray(states, dtype=float)
@@ -363,9 +363,11 @@ def evaluate_reference_grid(plant, goal, terrain, tracks, now, cfg, previous_act
 
 
 class RemusDWA:
-    """Reference-space DWA baseline; bounded candidate budget plus one fallback.
+    """Reference-space DWA with a bounded full-plant validation budget.
 
-    The CA obstacle baseline and deterministic margin are explicit limitations.
+    CA is the default pluggable obstacle forecast; deterministic margins remain
+    an explicit limitation. Emergency validation uses one coast reference or
+    at most eight configured backup references, without assuming instant stop.
     No candidate is considered safe because its cheap rollout passed a test.
     """
 

@@ -19,6 +19,7 @@ from .terrain import HeightField
 STAGE2_SCENARIOS = (
     "empty3d", "static3d", "head_on3d", "crossing3d", "multi_crossing3d",
     "maneuvering3d", "terrain3d", "tracking_mismatch3d", "paper_random3d", "perlin_constrained3d",
+    "perlin_cruise_constrained3d",
 )
 SCENARIOS = STAGE2_SCENARIOS
 
@@ -99,6 +100,10 @@ def _ridge_terrain(cfg):
 
 
 def make_stage2_scenario(name: str, cfg: Stage2Config) -> Scene:
+    if name == "perlin_cruise_constrained3d":
+        cfg.validate()
+        from .stage3_terrain import make_cruise_constrained_perlin_scene
+        return make_cruise_constrained_perlin_scene(cfg)
     if name == "perlin_constrained3d":
         cfg.validate()
         from .stage3_terrain import make_constrained_perlin_scene
