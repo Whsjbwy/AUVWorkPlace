@@ -100,6 +100,9 @@ class CAObstacleForecaster:
 def make_obstacle_forecaster(cfg) -> ObstacleForecaster:
     if cfg.obstacle_predictor == 'ca':
         return CAObstacleForecaster(cfg)
+    if cfg.obstacle_predictor == 'pplnm':
+        from .stage3_pplnm import PPLNMObstacleForecaster
+        return PPLNMObstacleForecaster(cfg)
     raise ValueError(f'unsupported obstacle predictor: {cfg.obstacle_predictor}')
 
 

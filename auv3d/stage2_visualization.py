@@ -64,9 +64,15 @@ def _table(result, key, column_key, defaults):
 
 def _title(result, suffix):
     summary = result.get("summary", {})
+    cfg = result.get('config', {})
+    method = cfg.get('obstacle_predictor', 'ca').upper()
+    if method == 'PPLNM':
+        method += ' (trained 9s from measurement + '+cfg.get('pplnm_extension_mode', 'unspecified')+')'
     return (f"{summary.get('scenario', 'scenario')} | navigation: {summary.get('status', 'unreported')} | {suffix}\n"
             f"Safety: {summary.get('safety_validation_status', 'not reported')}\n"
-            "REMUS 6-DOF actual execution; separate 6-DOF forward predictions")
+            "REMUS 6-DOF actual execution; separate 6-DOF forward predictions\n"
+            +method+' | memory: '+cfg.get('memory_policy','hard_expiry')
+            +' | guidance: '+cfg.get('terrain_guidance','direct'))
 
 
 def _position_at(states, time_s):

@@ -25,7 +25,8 @@ def main(argv=None):
         'shortlist-policy': ['diverse', 'ranked', 'coverage'],
         'emergency-policy': ['coast', 'verified_backup'],
         'terrain-guidance': ['direct', 'coarse3d_astar'],
-        'obstacle-predictor': ['ca'],
+        'obstacle-predictor': ['ca', 'pplnm'],
+        'pplnm-extension-mode': ['cv_after9', 'ca_after9', 'reject'],
     }.items():
         run.add_argument('--'+name, choices=choices)
     for name in ('max-time-s', 'horizon-s', 'control-dt', 'command-delay-s',
@@ -37,6 +38,9 @@ def main(argv=None):
         run.add_argument('--'+name, type=float)
     for name in ('candidate-budget', 'seed'):
         run.add_argument('--'+name, type=int)
+    run.add_argument('--pplnm-checkpoint')
+    run.add_argument('--pplnm-calibration')
+    run.add_argument('--pplnm-threads', type=int)
     args = parser.parse_args(argv)
     cfg = Stage2Config.load(args.config) if args.config else Stage2Config()
     ignored = {'task', 'backend', 'scenario', 'config', 'out', 'no_animation', 'no_plot'}

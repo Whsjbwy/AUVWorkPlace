@@ -29,7 +29,7 @@ Start-Process .\results_stage3\my_crossing\replay_3d.html
 
 阶段2是有限时域工程基线，没有ECP或新型学习算法。任务完成、碰撞、超时和应急风险必须按真实结果判断；最新逐项执行证据见 [阶段2测试报告](docs_stage2/TEST_REPORT.md)。阶段1 [接口清单](docs_stage1/REMUS_INTERFACE.md) 保留为历史记录，当前接口见 [阶段2后续接口](docs_stage2/ECP_INTERFACES.md)。
 
-阶段2六自由度后端的障碍预测当前仍为 **CA**，尚未接入PPLNM；已有PPLNM只用于阶段1P25后端。默认45个参考中最多9个进行完整REMUS验证，无可行参考时额外检查RPM0滑行。没有ECP或可靠电功率标定，不能报告真实电能节省。同步默认运行不把墙钟规划耗时加入物理时间。
+阶段2保留的默认障碍预测仍为 **CA**。阶段3通过独立插件支持PPLNM＋原REMUS闭环：已有模型只训练到最后测量后9秒，24秒规划的后续部分必须明确标为CV/CA工程延拓或直接拒绝。初步公平对照统一CA/PPLNM历史dt3秒、相同原工程围球，未训练24秒版本，未加入ECP。详见 [预测器接口](docs_stage3/PREDICTOR_INTERFACE.md)。默认45个参考中最多9个进行完整REMUS验证，无可行参考时额外检查RPM0滑行。没有可靠电功率标定，不能报告真实电能节省。同步默认运行不把墙钟规划耗时加入物理时间。
 
 本轮代码复审、9/18/45预算对照和失败归因见 [复审报告](docs_stage2/review_20261011/TEST_REPORT.md) 与 [失败分析](docs_stage2/review_20261011/FAILURE_ANALYSIS.md)。此前251项测试、14工况13到达/9有限时域验收通过属于历史阶段2结果，不能替代本轮记录。长期研究分支、提交边界和自动测试流程见 [版本管理](docs_stage2/VERSION_CONTROL.md)。原始实验目录和审查ZIP留在本地，Git只保存源码、配置、必要推理权重和小体积报告。
 

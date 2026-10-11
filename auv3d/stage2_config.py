@@ -75,6 +75,10 @@ class Stage2Config:
     terrain_astar_max_nodes: int = 60000
     obstacle_predictor: str = "ca"
     prediction_history_dt_s: float = 0.0  # 0 retains observation_period_s for CA.
+    pplnm_checkpoint: str = "artifacts_stage1/pplnm_150/pplnm.pt"
+    pplnm_calibration: str = "artifacts_stage1/pplnm_150/pplnm_calibration.json"
+    pplnm_extension_mode: str = "cv_after9"
+    pplnm_threads: int = 2
     label: str = "stage2_remus6dof_engineering_baseline"
 
     @property
@@ -173,11 +177,18 @@ class Stage2Config:
             "shortlist_policy": ("diverse", "ranked", "coverage"),
             "emergency_policy": ("coast", "verified_backup"),
             "terrain_guidance": ("direct", "coarse3d_astar"),
-            "obstacle_predictor": ("ca",),
+            "obstacle_predictor": ("ca", "pplnm"),
+            "pplnm_extension_mode": ("cv_after9", "ca_after9", "reject"),
         }
         for name, allowed in choices.items():
             if getattr(self, name) not in allowed:
                 raise ValueError(f"{name} must be one of {allowed}")
+        for name in ('pplnm_checkpoint', 'pplnm_calibration'):
+            if not isinstance(getattr(self, name), str) or not getattr(self, name).strip():
+                raise ValueError(f'{name} must name a model/calibration file')
+        if (not isinstance(self.pplnm_threads, int) or isinstance(self.pplnm_threads, bool)
+                or self.pplnm_threads < 1):
+            raise ValueError('pplnm_threads must be a positive integer')
         if self.terrain_astar_max_grade > 0.5:
             raise ValueError("terrain_astar_max_grade must be <= 0.5")
         if (not isinstance(self.terrain_astar_max_nodes, int)
