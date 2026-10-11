@@ -1,0 +1,5 @@
+# Cloud-tested versions. Use a NEW virtual environment; do not replace the original lock file.
+numpy==2.3.5
+matplotlib==3.10.8
+pytest==9.0.2
+-e ./PythonVehicleSimulator

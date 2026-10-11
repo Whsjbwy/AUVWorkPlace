@@ -1,0 +1,56 @@
+{
+  "bins": [
+    0.0,
+    0.75,
+    1.5,
+    2.5,
+    null
+  ],
+  "alpha": 0.05,
+  "min_count": 30,
+  "quantiles": [
+    [
+      2.413529634475708,
+      8.823442459106445,
+      14.801671981811523
+    ],
+    [
+      3.5769731998443604,
+      11.608976364135742,
+      21.68634605407715
+    ],
+    [
+      4.443411350250244,
+      11.390531539916992,
+      24.73960304260254
+    ],
+    [
+      4.225626468658447,
+      10.802264213562012,
+      23.89605140686035
+    ]
+  ],
+  "global_q": [
+    4.225626468658447,
+    10.802264213562012,
+    23.89605140686035
+  ],
+  "counts": [
+    40,
+    45,
+    71,
+    0
+  ],
+  "claim": "empirical marginal only",
+  "metadata": {
+    "predictor_name": "pplnm_reimplementation",
+    "prediction_dt_s": 3.0,
+    "architecture": "lstm_2x256_layernorm_3_linear_heads",
+    "input_dim": 9,
+    "output_dim": 3,
+    "history_length": 6,
+    "horizon_steps": 3,
+    "epochs_completed": 12,
+    "training_label": "engineering_smoke_not_full_150_epoch_reproduction"
+  }
+}

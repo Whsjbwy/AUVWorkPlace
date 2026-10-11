@@ -1,11 +1,58 @@
-.venv/
+# Local Python environments and generated caches.
+.venv*/
+venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 *.egg-info/
 build/
 dist/
-results/
+
+# Raw experiments, archives and machine-specific delivery manifests stay local.
+results*/
+datasets*/
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.log
+pytest*.xml
+junit*.xml
+pytest_temp/
+pytest_work/
+training_state.pt
+DELIVERY_STAGE*.json
+validation_manifest.json
 3D_animation.gif
+
+# Only inference fixtures required by existing tests belong in Git.
+# Ignoring files preserves the complete original artifacts on disk.
+artifacts_stage1/*
+!artifacts_stage1/README_ARCHIVE.md
+!artifacts_stage1/pplnm_150/
+!artifacts_stage1/pplnm_smoke/
+artifacts_stage1/pplnm_150/*
+!artifacts_stage1/pplnm_150/pplnm.pt
+!artifacts_stage1/pplnm_150/pplnm_calibration.json
+!artifacts_stage1/pplnm_150/ca_calibration.json
+artifacts_stage1/pplnm_smoke/*
+!artifacts_stage1/pplnm_smoke/pplnm.pt
+!artifacts_stage1/pplnm_smoke/pplnm_calibration.json
+!artifacts_stage1/pplnm_smoke/ca_calibration.json
+
+# Credentials and local agent/runtime state are never project deliverables.
 .env
 .env.*
+!.env.example
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+.ssh/
+.aws/
+.codex/
+.agents/
+Thumbs.db
+.DS_Store

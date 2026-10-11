@@ -1,0 +1,88 @@
+{
+  "terrain": {
+    "width": 1000.0,
+    "height": 1000.0,
+    "max_depth": 200.0,
+    "amplitude": 150.0,
+    "scale": 150.0,
+    "octaves": 2,
+    "exponent": 3,
+    "grid_spacing": 5.0
+  },
+  "sonar": {
+    "range_m": 150.0,
+    "hfov_deg": 90.0,
+    "vfov_deg": 6.0,
+    "horizontal_resolution_deg": 1.0,
+    "vertical_resolution_deg": 6.0,
+    "period_s": 1.0,
+    "position_noise_std_m": 0.0,
+    "terrain_occlusion": true
+  },
+  "obstacles": {
+    "count": 120,
+    "min_separation_m": 25.0,
+    "radius_min_m": 2.0,
+    "radius_max_m": 12.0,
+    "speed_min": 0.2,
+    "speed_max": 2.5,
+    "pitch_max_deg": 30.0,
+    "acceleration_max": 0.5,
+    "q_max_deg_s": 8.0,
+    "r_max_deg_s": 15.0,
+    "target_period_s": 15.0,
+    "kp": [
+      0.6,
+      1.0,
+      0.8
+    ],
+    "ki": [
+      0.08,
+      0.15,
+      0.1
+    ]
+  },
+  "vehicle": {
+    "min_speed": 0.0,
+    "max_speed": 2.5,
+    "acceleration_max": 0.3,
+    "pitch_max_deg": 30.0,
+    "q_max_deg_s": 4.0,
+    "r_max_deg_s": 5.0,
+    "angular_acceleration_deg_s2": 4.0,
+    "body_radius_m": 0.8056208785775106,
+    "depth_limit_m": 100.0
+  },
+  "planner": {
+    "control_dt": 1.0,
+    "integration_dt": 0.05,
+    "rollout_dt": 0.2,
+    "horizon_s": 9.0,
+    "speed_samples": 5,
+    "pitch_samples": 7,
+    "yaw_samples": 9,
+    "goal_weight": 1.0,
+    "clearance_weight": 0.8,
+    "speed_weight": 0.35,
+    "smooth_weight": 0.1,
+    "safety_margin_m": 1.0,
+    "base_prediction_margin_m": 0.75,
+    "track_max_age_s": 3.0,
+    "goal_tolerance_m": 5.0,
+    "max_time_s": 250.0
+  },
+  "seed": 7,
+  "current_ned_mps": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "prediction_dt_s": 3.0,
+  "label": "stage1_development_not_exact_reproduction",
+  "_provenance": {
+    "paper_fields": "terrain except grid_spacing; sonar range/angles/resolution; obstacles Table2/4",
+    "development_fields": "AUV action bounds; physical time steps; risk margins and DWA weights",
+    "prediction_dt_rationale": "3 x 3s = 9s covers 2.5m/s / 0.3m/s^2 braking time (8.33s); this is NOT a claimed paper parameter",
+    "strict_reproduction": false
+  }
+}
