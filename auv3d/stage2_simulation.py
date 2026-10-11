@@ -11,7 +11,9 @@ from .geometry import swept_sphere_clearance, wrap_pi
 from .remus import RemusPlant
 from .remus_planner import RemusDWA
 from .scenarios import make_stage2_scenario
-from .sensors import IdealObjectSonar, TrackMemory
+from .sensors import IdealObjectSonar
+from .stage3_memory import make_track_memory
+from .stage3_terrain import TerrainGuideConfig, build_terrain_guidance
 from .stage2_config import Stage2Config
 
 STATE_COLUMNS = ['time_s','north_m','east_m','depth_m','roll_rad','pitch_rad','yaw_rad',
@@ -61,13 +63,21 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
     plant = initialize_plant(scene, cfg)
     sonar_cfg = cfg.sensor_config()
     sonar = IdealObjectSonar(sonar_cfg, cfg.seed)
-    memory = TrackMemory(cfg.track_max_age_s)
+    memory = make_track_memory(cfg)
+    terrain_guide = build_terrain_guidance(
+        terrain, plant.eta[:3], goal, body_radius_m=cfg.body_radius_m,
+        safety_margin_m=cfg.safety_margin_m, depth_limit_m=cfg.depth_limit_m,
+        config=TerrainGuideConfig(mode=cfg.terrain_guidance,
+            xy_step_m=cfg.terrain_astar_xy_step_m, depth_step_m=cfg.terrain_astar_depth_step_m,
+            max_grade=cfg.terrain_astar_max_grade, waypoint_tolerance_m=cfg.terrain_waypoint_tolerance_m,
+            lookahead_m=cfg.terrain_lookahead_m, max_nodes=cfg.terrain_astar_max_nodes))
     guidance, planner = RemusGuidance(), RemusDWA(cfg)
     dt = cfg.physics_dt
     control_n, obs_n = round(cfg.control_dt/dt), round(cfg.observation_period_s/dt)
     total = round(cfg.max_time_s/dt)
     state_logs, controls, planning, snapshots, plans, errors, events = [], [], [], [], [], [], []
     plan_diagnostics, observation_log, clearance_log = [], [], []
+    memory_log, guidance_log = [], []
     pending = []
     pending_commands = []
     actual_min = float('inf')
@@ -125,13 +135,21 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
             packet['delivered_time_s'] = t
             delivered.extend(observations)
         # Timestamps remain measurement time, never delivery time or future truth.
-        memory.update(delivered, t)
+        memory.update(delivered, t, ego_position=plant.eta[:3])
         if step % control_n == 0:
             tracks = memory.current(t)
             maximum_tracked = max(maximum_tracked, len(tracks))
             maximum_observation_age = max(maximum_observation_age,
                                           max((t-track.times[-1] for track in tracks),default=0.))
-            plan = planner.plan(plant, goal, terrain, tracks, t)
+            memory_state = memory.diagnostics(t)
+            memory_log.append({key:value for key,value in memory_state.items() if key != 'events'})
+            planner.set_memory_uncertainty(memory_state['uncertainty_by_id'])
+            planning_goal = terrain_guide.current_target(plant.eta[:3])
+            guidance_log.append({'time_s':t,'planning_goal_ned_m':planning_goal.tolist(),
+                                 'final_goal_ned_m':goal.tolist(),
+                                 'progress_m':terrain_guide.progress_m,
+                                 'unreachable_target_count':terrain_guide.unreachable_target_count})
+            plan = planner.plan(plant, planning_goal, terrain, tracks, t)
             pending_commands.append((t+cfg.command_delay_s, t, plan))
             planning.append([t,plan.planning_ms,plan.candidate_count,plan.verified_count,plan.valid_count,
                              plan.minimum_predicted_clearance_m,len(tracks),int(plan.feasible),plan.prediction_fallback_count])
@@ -140,12 +158,23 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
                           'states':plan.states.copy(),'feasible':plan.feasible,
                           'validation_backend':'original_remus6dof','reason':plan.reason,
                           'emergency_verified_safe':plan.emergency_verified_safe,
-                          'prediction_failure_count':plan.prediction_failure_count})
+                          'prediction_failure_count':plan.prediction_failure_count,
+                          'planning_goal_ned_m':list(plan.planning_goal),
+                          'forecast_records':list(plan.forecast_records)})
             plan_diagnostics.append({
                 'time_s':t,'reason':plan.reason,'feasible':bool(plan.feasible),
                 'candidate_count':plan.candidate_count,'verified_count':plan.verified_count,
                 'valid_count':plan.valid_count,'prediction_failure_count':plan.prediction_failure_count,
                 'emergency_verified_safe':plan.emergency_verified_safe,
+                'planning_goal_ned_m':list(plan.planning_goal),
+                'candidate_scheme':plan.candidate_scheme,'shortlist_policy':plan.shortlist_policy,
+                'emergency_policy':plan.emergency_policy,
+                'backup_evaluations':list(plan.backup_evaluations),
+                'backup_verified_count':plan.backup_verified_count,
+                'backup_safe_count':plan.backup_safe_count,
+                'selected_backup_index':plan.selected_backup_index,
+                'forecast_records':list(plan.forecast_records),
+                'memory_uncertainty_by_id':memory_state['uncertainty_by_id'],
                 'tracks':[{'object_id':int(track.object_id),
                            'times_s':np.asarray(track.times).tolist(),
                            'positions':np.asarray(track.positions).tolist(),
@@ -198,6 +227,9 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
             break
     states = np.asarray(state_logs)
     terminal_time = float(states[-1,0])
+    # Advance retention diagnostics to the actual terminal state, without
+    # delivering any pending sensor packet after the execution has stopped.
+    memory.update([], terminal_time, ego_position=plant.eta[:3])
     if not snapshots or abs(snapshots[-1]['time_s']-terminal_time)>1e-9:
         terminal = obstacles.snapshot()
         # Offline display truth at the actual endpoint, never a sensor delivery.
@@ -222,7 +254,7 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
         'reached_goal':status=='success','failure_reason':failure_reason,
         'avoidance_acceptance_passed':status=='success' and unsafe_emergencies==0 and actual_min>=cfg.safety_margin_m-1e-9,
         'safety_validation_status':safety_status,
-        'safety_failure_reason':('one or more emergency coasting predictions violated the configured safety clearance; arrival does not erase this failure'
+        'safety_failure_reason':('one or more emergency predictions violated the configured safety clearance; arrival does not erase this failure'
                                  if unsafe_emergencies else 'actual trajectory fell below the configured safety margin' if actual_min<cfg.safety_margin_m-1e-9 else failure_reason),
         'actual_safety_margin_met':actual_min>=cfg.safety_margin_m-1e-9,
         'duration_s':float(states[-1,0]),'goal_distance_m':float(np.linalg.norm(plant.eta[:3]-goal)),
@@ -254,10 +286,23 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
         'control_log_time_convention':'time_s is interval start; raw/applied commands act over [time_s,time_s+physics_dt]; actual actuator columns are interval-end samples',
         'all_states_finite':bool(np.isfinite(states).all()),'wall_clock_s':time.perf_counter()-started,
         'physics_dt_s':dt,'control_dt_s':cfg.control_dt,'candidate_budget':cfg.candidate_budget,
-        'maximum_full_rollouts_per_plan':cfg.candidate_budget+1,
+        'maximum_full_rollouts_per_plan':cfg.candidate_budget+(8 if cfg.emergency_policy=='verified_backup' else 1),
+        'memory_policy':cfg.memory_policy,'track_max_age_s':cfg.track_max_age_s,
+        'lost_object_count':memory.diagnostics(terminal_time)['lost_object_count'],
+        'track_hard_removed_count':memory.diagnostics(terminal_time)['hard_removed'],
+        'track_conditional_removed_count':memory.diagnostics(terminal_time)['conditional_removed'],
+        'track_reacquired_count':memory.diagnostics(terminal_time)['reacquired'],
+        'memory_maximum_extra_uncertainty_m':max((m['maximum_uncertainty_m'] for m in memory_log),default=0.),
+        'memory_retained_beyond_expiry_plan_count':sum(bool(m['retained_beyond_expiry_ids']) for m in memory_log),
+        'candidate_scheme':cfg.candidate_scheme,'shortlist_policy':cfg.shortlist_policy,
+        'emergency_policy':cfg.emergency_policy,
+        'backup_full_rollout_count':sum(p['backup_verified_count'] for p in plan_diagnostics),
+        'safe_backup_event_count':sum(p['backup_safe_count']>0 for p in plan_diagnostics),
+        'terrain_guidance':cfg.terrain_guidance,'terrain_guidance_metrics':terrain_guide.metrics,
         'initialization':'physical warmup then translation to start; controller, velocity and actuator states retained',
         'warmup_s':cfg.warmup_s,'hydrodynamic_parameters_modified':False,
-        'prediction':'CA obstacle forecast + full REMUS shortlisted vehicle rollout; no ECP',
+        'prediction':cfg.obstacle_predictor+' obstacle forecast + full REMUS shortlisted vehicle rollout; no ECP',
+        'obstacle_predictor':cfg.obstacle_predictor,
         'safety_claim':'finite-horizon model check only; emergency does not imply safe stopping',
         'energy_joules':None,'scene_metadata':scene.metadata,
     }
@@ -266,6 +311,9 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
             'planning':planning,'planning_columns':PLANNING_COLUMNS,
             'prediction_errors':errors,'error_columns':ERROR_COLUMNS,'selected_plans':plans,
             'planning_diagnostics':plan_diagnostics,'observations':observation_log,
+            'memory_diagnostics':memory_log,'memory_events':memory.diagnostics(terminal_time)['events'],
+            'terrain_guidance':{'metrics':terrain_guide.metrics,'path':terrain_guide.path.tolist(),
+                                'targets':guidance_log},
             'clearance':np.asarray(clearance_log).reshape(-1,3),
             'terrain':terrain,'obstacles':snapshots,'goal':goal,'config':cfg.to_dict(),'events':events}
 
@@ -277,7 +325,7 @@ def save_remus_episode(result,out,animate=True,plot=True):
     out.mkdir(parents=True,exist_ok=True)
     for name in ('summary','config','events','obstacles'):
         (out/f'{name}.json').write_text(json.dumps(result[name],indent=2,ensure_ascii=False),encoding='utf-8')
-    for name in ('planning_diagnostics','observations'):
+    for name in ('planning_diagnostics','observations','memory_diagnostics','memory_events','terrain_guidance'):
         (out/f'{name}.json').write_text(json.dumps(result.get(name,[]),indent=2,ensure_ascii=False),encoding='utf-8')
     np.savetxt(out/'clearance.csv',result.get('clearance',np.empty((0,3))),delimiter=',',
                header='time_s,actual_interval_clearance_m,clearance_minus_safety_margin_m',comments='')

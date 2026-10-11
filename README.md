@@ -1,5 +1,19 @@
 # AUVWorkPlace
 
+阶段3研究分支新增共同六自由度实验配置：因果感知记忆、候选/应急动作对照、普通已知海床三维A*和可插拔障碍预测协议。阶段2默认值与原REMUS物理模型保留。当前进展及真实失败见 [共同基线](docs_stage3/COMMON_BASELINE.md)、[阶段3测试记录](docs_stage3/TEST_REPORT.md)。
+
+```powershell
+$env:PYTHONUTF8 = '1'
+$env:MPLBACKEND = 'Agg'
+.\.venv-stage1\Scripts\python.exe -m pytest PythonVehicleSimulator/tests tests_stage1 tests_stage2 tests_stage3 -q
+.\.venv-stage1\Scripts\python.exe run_stage3.py simulate --backend remus6dof --scenario crossing3d --out results_stage3/my_crossing
+.\.venv-stage1\Scripts\python.exe run_stage3.py simulate --scenario terrain3d --terrain-guidance coarse3d_astar --out results_stage3/my_terrain
+.\.venv-stage1\Scripts\python.exe run_stage3.py simulate --scenario multi_crossing3d --memory-policy retain_uncertain --candidate-budget 18 --out results_stage3/my_memory
+Start-Process .\results_stage3\my_crossing\replay_3d.html
+```
+
+每次使用新输出目录。图像、GIF、三维HTML回放及计划/执行误差分别保存；实际轨迹始终来自六自由度模型。记忆膨胀和几何子目标都不代表安全保证。
+
 同一仓库保留原 Fossen REMUS 100 六自由度仿真，整合阶段1三维海底、障碍、声呐、物理先验 LSTM 与三维 DWA，并新增使用原REMUS控制器和执行器的六自由度闭环避障基线。基础仿真与已有模型预测均支持CPU。
 
 | 入口 | 执行模型 | 功能 |

@@ -58,6 +58,23 @@ class Stage2Config:
     terrain_amplitude_m: float = 60.0
     terrain_grid_spacing_m: float = 2.0
     paper_obstacle_count: int = 120
+    # Stage3 switches are opt-in; defaults reproduce the retained stage2 policy.
+    memory_policy: str = "hard_expiry"
+    memory_uncertainty_growth_mps: float = 2.5
+    memory_obstacle_speed_bound_mps: float = 4.0
+    memory_ego_speed_bound_mps: float = 4.0
+    candidate_scheme: str = "baseline45"
+    shortlist_policy: str = "diverse"
+    emergency_policy: str = "coast"
+    terrain_guidance: str = "direct"
+    terrain_astar_xy_step_m: float = 15.0
+    terrain_astar_depth_step_m: float = 3.0
+    terrain_astar_max_grade: float = 0.25
+    terrain_waypoint_tolerance_m: float = 6.0
+    terrain_lookahead_m: float = 25.0
+    terrain_astar_max_nodes: int = 60000
+    obstacle_predictor: str = "ca"
+    prediction_history_dt_s: float = 0.0  # 0 retains observation_period_s for CA.
     label: str = "stage2_remus6dof_engineering_baseline"
 
     @property
@@ -87,11 +104,14 @@ class Stage2Config:
             "sensor_range_m", "observation_period_s", "track_max_age_s",
             "interaction_distance_m", "obstacle_radius_m", "scenario_width_m",
             "scenario_height_m", "terrain_depth_m", "terrain_grid_spacing_m",
+            "memory_obstacle_speed_bound_mps", "memory_ego_speed_bound_mps",
+            "terrain_astar_xy_step_m", "terrain_astar_depth_step_m",
+            "terrain_astar_max_grade", "terrain_waypoint_tolerance_m", "terrain_lookahead_m",
         )
         nonnegative = (
             "safety_margin_m", "prediction_margin_m", "current_speed",
             "observation_delay_s", "sensor_noise_std_m", "warmup_s",
-            "command_delay_s",
+            "command_delay_s", "memory_uncertainty_growth_mps", "prediction_history_dt_s",
             "obstacle_speed_scale", "obstacle_turn_rate_deg_s",
             "terrain_amplitude_m", "goal_weight", "clearance_weight",
             "speed_weight", "smooth_weight",
@@ -147,6 +167,22 @@ class Stage2Config:
             raise ValueError("seed must be a nonnegative integer")
         if self.terrain_amplitude_m >= self.terrain_depth_m:
             raise ValueError("terrain_amplitude_m must be smaller than terrain_depth_m")
+        choices = {
+            "memory_policy": ("hard_expiry", "retain_uncertain", "conditional"),
+            "candidate_scheme": ("baseline45", "expanded"),
+            "shortlist_policy": ("diverse", "ranked", "coverage"),
+            "emergency_policy": ("coast", "verified_backup"),
+            "terrain_guidance": ("direct", "coarse3d_astar"),
+            "obstacle_predictor": ("ca",),
+        }
+        for name, allowed in choices.items():
+            if getattr(self, name) not in allowed:
+                raise ValueError(f"{name} must be one of {allowed}")
+        if self.terrain_astar_max_grade > 0.5:
+            raise ValueError("terrain_astar_max_grade must be <= 0.5")
+        if (not isinstance(self.terrain_astar_max_nodes, int)
+                or isinstance(self.terrain_astar_max_nodes, bool) or self.terrain_astar_max_nodes < 1):
+            raise ValueError("terrain_astar_max_nodes must be a positive integer")
         # Controlled scenes contain a 180 m route plus space for turning.
         if self.scenario_width_m < 240 or self.scenario_height_m < 180:
             raise ValueError("controlled scenes require at least 240 x 180 m")
