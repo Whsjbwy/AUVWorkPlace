@@ -81,8 +81,11 @@ class PPLNMObstacleForecaster:
                   +(components['fixed_prediction_margin_m']+components['stage2_age_margin_m'])
                   +components['memory_extra_uncertainty_m'])
         calibration_radii = [None]*len(times)
+        # Training/calibration data use the last resampled feature velocity,
+        # which can differ from the last raw observation interval on turns.
+        calibration_speed = float(np.linalg.norm(history.features[-1,3:6]))
         if valid.any():
-            values = self.calibration.radius(speed, np.clip(offsets[valid],0.,self.trained_horizon),
+            values = self.calibration.radius(calibration_speed, np.clip(offsets[valid],0.,self.trained_horizon),
                                              self.history_dt)
             for i, value in zip(np.flatnonzero(valid), values):
                 calibration_radii[int(i)] = float(value)
@@ -95,6 +98,9 @@ class PPLNMObstacleForecaster:
             'trained_support_end_s':float(track.times[-1])+self.trained_horizon,
             'trained_valid_mask':valid.tolist(),'calibration_valid_mask':valid.tolist(),
             'p25_calibration_radii_m':calibration_radii,
+            'calibration_speed_mps':calibration_speed,
+            'calibration_speed_definition':'norm of last dt3 resampled history velocity, matching the original calibration dataset',
+            'calibration_mask_scope':'table/interpolation support only; not a new coverage guarantee at interpolated or stale times',
             'calibrated_radii_applied':False,'radius_components':components,
             'extension_mode':mode,'extension_point_count':int(tail.sum()),
             'extension_claim':'explicit engineering continuation; neither trained nor calibrated beyond nine seconds',

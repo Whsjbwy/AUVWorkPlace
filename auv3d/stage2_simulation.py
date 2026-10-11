@@ -303,6 +303,11 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
         'warmup_s':cfg.warmup_s,'hydrodynamic_parameters_modified':False,
         'prediction':cfg.obstacle_predictor+' obstacle forecast + full REMUS shortlisted vehicle rollout; no ECP',
         'obstacle_predictor':cfg.obstacle_predictor,
+        'prediction_history_dt_s':(3.0 if cfg.obstacle_predictor=='pplnm' else
+                                   cfg.prediction_history_dt_s or cfg.observation_period_s),
+        'pplnm_trained_horizon_s':9.0 if cfg.obstacle_predictor=='pplnm' else None,
+        'pplnm_extension_mode':cfg.pplnm_extension_mode if cfg.obstacle_predictor=='pplnm' else 'not_applicable',
+        'calibrated_radii_applied':False,
         'safety_claim':'finite-horizon model check only; emergency does not imply safe stopping',
         'energy_joules':None,'scene_metadata':scene.metadata,
     }

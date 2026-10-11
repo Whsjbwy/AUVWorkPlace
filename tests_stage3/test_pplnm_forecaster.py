@@ -1,6 +1,7 @@
 """Real frozen-model smoke plus independent explicit-tail contract tests."""
 from copy import deepcopy
 from dataclasses import replace
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -13,6 +14,9 @@ from auv3d.stage2_config import Stage2Config
 from auv3d.stage3_forecasting import CAObstacleForecaster, ForecastContext, make_obstacle_forecaster
 from auv3d.stage3_pplnm import PPLNMObstacleForecaster
 from auv3d.terrain import HeightField
+
+
+SOURCE_ROOT = Path(__file__).resolve().parents[1]
 
 
 def track():
@@ -57,12 +61,12 @@ def fake_forecaster(mode="cv_after9", **changes):
 @pytest.fixture(scope="module")
 def actual_predictor():
     cfg = Stage2Config()
-    return PPLNMPredictor(cfg.pplnm_checkpoint, device="cpu", threads=2)
+    return PPLNMPredictor(SOURCE_ROOT / cfg.pplnm_checkpoint, device="cpu", threads=2)
 
 
 def test_existing_weight_and_calibration_load_and_real_forecast_is_finite(actual_predictor):
     cfg = replace(Stage2Config(), obstacle_predictor="pplnm", prediction_history_dt_s=3.)
-    calibration = SphericalCalibration.load(cfg.pplnm_calibration)
+    calibration = SphericalCalibration.load(SOURCE_ROOT / cfg.pplnm_calibration)
     adapter = PPLNMObstacleForecaster(cfg, predictor=actual_predictor, calibration=calibration)
     measured = track()
     times = np.array([6., 9., 12., 15., 18., 30.])
@@ -216,3 +220,38 @@ def test_factory_switches_using_configuration_without_planner_code_changes(actua
     result = ForecastContext(learned.cfg, learned).forecast(track(), [6., 15., 30.], 6.)
     assert result.metadata["predictor"] == "pplnm"
     assert result.metadata["trained_valid_mask"] == [True, True, False]
+
+
+def test_calibration_speed_bin_matches_resampled_dataset_not_last_raw_turn_interval():
+    measured = Track(5, 4., [0., 1., 2., 3.], [
+        np.array([0., 0., 30.]), np.array([1., 0., 30.]),
+        np.array([1., 1., 30.]), np.array([0., 1., 30.])])
+    # Three one-second sides of a square: last raw speed=1, dt3 displacement
+    # speed=1/3. Original data.py assigns calibration bins using the latter.
+    cfg = replace(Stage2Config(), prediction_history_dt_s=3., obstacle_predictor="pplnm")
+    calibration = fake_calibration()
+    called = []
+    original_radius = calibration.radius
+
+    def record_radius(speed, offsets, dt):
+        called.append((speed, np.asarray(offsets).copy(), dt))
+        return original_radius(speed, offsets, dt)
+
+    calibration.radius = record_radius
+    adapter = PPLNMObstacleForecaster(cfg, predictor=FakePredictor(), calibration=calibration)
+    result = adapter.forecast(measured, [4., 6., 12., 16.], 4.)
+    assert len(called) == 1
+    assert called[0][0] == pytest.approx(1/3)
+    np.testing.assert_array_equal(called[0][1], [1., 3., 9.])
+    assert called[0][2] == 3.
+    assert result.metadata["observed_speed_mps"] == 1.
+    assert result.metadata["calibration_speed_mps"] == pytest.approx(1/3)
+    assert "resampled history velocity" in result.metadata["calibration_speed_definition"]
+    assert "not a new coverage guarantee" in result.metadata["calibration_mask_scope"]
+    assert result.metadata["p25_calibration_radii_m"][-1] is None
+    assert not result.metadata["calibrated_radii_applied"]
+    ca = CAObstacleForecaster(cfg).forecast(measured, [4., 6., 12., 16.], 4.)
+    # Navigation still uses raw-speed Stage2 age inflation, unchanged by the
+    # corrected calibration lookup. No P25 quantile is silently added.
+    np.testing.assert_array_equal(result.enclosing_radii_m, ca.enclosing_radii_m)
+    assert result.metadata["radius_components"] == ca.metadata["radius_components"]
