@@ -21,3 +21,7 @@
 最终集成CLI实际运行`python run_stage3.py simulate --backend remus6dof --scenario crossing3d --max-time-s 120 --out results_stage3/common_crossing_cli --no-animation`：到达、最小间隙13.532717米、应急0、不安全预测0，有限时域验收通过；图像与HTML回放已生成。原`run_remus.py --duration 200`入口、独立控制响应检查也实际通过，详见`common_quality/quality_checks.json`。墙钟P95受同时地形任务CPU争用影响，不能作为隔离实时性能。
 
 地形与统一矩阵仍在执行；未完成项不计为通过。后续提交将追加各配置的实际结果、CA/PPLNM共同时间锚点误差和最终全量测试数。
+
+PPLNM接入后实际全量回归：`pplnm_quality/pytest.log/xml`记录**532通过，0失败/错误/跳过**。随后另补的2项结果保存回归通过：合法深度上限主导间隙时，原比较产生`numpy.bool_`导致JSON异常；现在只将两项安全结果转换为Python `bool`，数值/阈值不改。原失败堆栈与修复后smoke均保留，新测试`test_episode_serialization.py`覆盖保存与到达分支。
+
+真实PPLNM权重/校准契约26项以及离线评价16项首次合计42通过；共同支持范围分组补强后43项通过。PPLNM CLI动态交叉85.4秒到达，净间隙11.325517米，应急0，验收通过。该独立跑通不能直接与历史CA(dt1)当作纯方法优劣；统一CA/PPLNM实验均dt3，正在执行。已有同锚点离线结果并不支持PPLNM总体优于CA，训练域外CV尾部误差明显，应单独报告。

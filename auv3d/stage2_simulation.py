@@ -252,11 +252,11 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
     summary = {
         'backend':'remus6dof','scenario':scenario,'seed':cfg.seed,'status':status,
         'reached_goal':status=='success','failure_reason':failure_reason,
-        'avoidance_acceptance_passed':status=='success' and unsafe_emergencies==0 and actual_min>=cfg.safety_margin_m-1e-9,
+        'avoidance_acceptance_passed':bool(status=='success' and unsafe_emergencies==0 and actual_min>=cfg.safety_margin_m-1e-9),
         'safety_validation_status':safety_status,
         'safety_failure_reason':('one or more emergency predictions violated the configured safety clearance; arrival does not erase this failure'
                                  if unsafe_emergencies else 'actual trajectory fell below the configured safety margin' if actual_min<cfg.safety_margin_m-1e-9 else failure_reason),
-        'actual_safety_margin_met':actual_min>=cfg.safety_margin_m-1e-9,
+        'actual_safety_margin_met':bool(actual_min>=cfg.safety_margin_m-1e-9),
         'duration_s':float(states[-1,0]),'goal_distance_m':float(np.linalg.norm(plant.eta[:3]-goal)),
         'goal_ned_m':goal.tolist(),'actual_start_ned_m':states[0,1:4].tolist(),
         'path_length_m':path_length,'minimum_model_clearance_m':float(actual_min),
