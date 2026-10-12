@@ -49,7 +49,7 @@ def initialize_plant(scene, cfg):
     return plant
 
 
-def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
+def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_policy=None):
     """Run the actual plant; optional diagnostics receive isolated copies only.
 
     ``on_plan(plant, tracks, now, plan, scene)`` is an offline observation hook.
@@ -71,7 +71,7 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
             xy_step_m=cfg.terrain_astar_xy_step_m, depth_step_m=cfg.terrain_astar_depth_step_m,
             max_grade=cfg.terrain_astar_max_grade, waypoint_tolerance_m=cfg.terrain_waypoint_tolerance_m,
             lookahead_m=cfg.terrain_lookahead_m, max_nodes=cfg.terrain_astar_max_nodes))
-    guidance, planner = RemusGuidance(), RemusDWA(cfg)
+    guidance, planner = RemusGuidance(), RemusDWA(cfg, risk_policy=risk_policy)
     dt = cfg.physics_dt
     control_n, obs_n = round(cfg.control_dt/dt), round(cfg.observation_period_s/dt)
     total = round(cfg.max_time_s/dt)
@@ -174,6 +174,7 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
                 'backup_safe_count':plan.backup_safe_count,
                 'selected_backup_index':plan.selected_backup_index,
                 'forecast_records':list(plan.forecast_records),
+                'risk_records':list(plan.risk_records),
                 'memory_uncertainty_by_id':memory_state['uncertainty_by_id'],
                 'tracks':[{'object_id':int(track.object_id),
                            'times_s':np.asarray(track.times).tolist(),
@@ -301,13 +302,16 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None):
         'terrain_guidance':cfg.terrain_guidance,'terrain_guidance_metrics':terrain_guide.metrics,
         'initialization':'physical warmup then translation to start; controller, velocity and actuator states retained',
         'warmup_s':cfg.warmup_s,'hydrodynamic_parameters_modified':False,
-        'prediction':cfg.obstacle_predictor+' obstacle forecast + full REMUS shortlisted vehicle rollout; no ECP',
+        'prediction':cfg.obstacle_predictor+' obstacle forecast + full REMUS shortlisted vehicle rollout; '+
+                     (risk_policy.description if risk_policy is not None else 'no ECP'),
+        'risk_method':risk_policy.method if risk_policy is not None else 'B0',
+        'risk_metadata':risk_policy.metadata if risk_policy is not None else {},
         'obstacle_predictor':cfg.obstacle_predictor,
         'prediction_history_dt_s':(3.0 if cfg.obstacle_predictor=='pplnm' else
                                    cfg.prediction_history_dt_s or cfg.observation_period_s),
         'pplnm_trained_horizon_s':9.0 if cfg.obstacle_predictor=='pplnm' else None,
         'pplnm_extension_mode':cfg.pplnm_extension_mode if cfg.obstacle_predictor=='pplnm' else 'not_applicable',
-        'calibrated_radii_applied':False,
+        'calibrated_radii_applied':bool(risk_policy is not None and risk_policy.method != 'B0'),
         'safety_claim':'finite-horizon model check only; emergency does not imply safe stopping',
         'energy_joules':None,'scene_metadata':scene.metadata,
     }

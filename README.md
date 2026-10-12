@@ -1,5 +1,33 @@
 # AUVWorkPlace
 
+阶段4增加CA风险处理最小试验：B0原工程包络、B1独立校准误差球、B2候选相关ECP扫掠间隙校准。三者共享原REMUS、45/9候选、CA、感知、普通海床A*及1米安全标准。B2是借鉴既有ECP的冻结离线工程适配，未实现作者完整在线ACP，也没有闭环概率安全保证。场景、数据划分与方法细节见[阶段4协议](docs_stage4/PROTOCOL.md)、[风险方法](docs_stage4/RISK_METHODS.md)。阶段2/3默认行为继续保留。
+
+```powershell
+$env:PYTHONUTF8 = '1'
+$env:MPLBACKEND = 'Agg'
+$env:OMP_NUM_THREADS = '1'
+$env:MKL_NUM_THREADS = '1'
+.\.venv-stage1\Scripts\python.exe -m pytest PythonVehicleSimulator/tests tests_stage1 tests_stage2 tests_stage3 tests_stage4 -q
+.\.venv-stage1\Scripts\python.exe run_stage4.py manifest
+.\.venv-stage1\Scripts\python.exe run_stage4.py run-baseline --workers 2 --out results_stage4/my_B0
+.\.venv-stage1\Scripts\python.exe run_stage4.py build-calibration --baseline-root results_stage4/my_B0 --out results_stage4/my_calibration.npz
+.\.venv-stage1\Scripts\python.exe run_stage4.py run-paired --split tune --alpha .1 .2 .3 --library results_stage4/my_calibration.npz --baseline-root results_stage4/my_B0 --workers 2 --out results_stage4/my_tune
+.\.venv-stage1\Scripts\python.exe run_stage4.py run-paired --split test --alpha .1 --library results_stage4/my_calibration.npz --baseline-root results_stage4/my_B0 --workers 2 --out results_stage4/my_test
+```
+
+每个结果目录保存真实六自由度轨迹、计划轨迹、地形、HTML三维回放、控制及失败日志；每次指定新目录。48个完整场景分为36个开发与12个独立测试，B1/B2仅使用24个calibration场景。调参曲线与测试结果分开，失败任务不剔除。多进程墙钟耗时受CPU争用影响，规划耗时尚未自动作为物理执行延迟。
+
+仓库附带约0.49MB的[冻结校准库](artifacts_stage4/README.md)，可将上述`--library`参数替换为`artifacts_stage4/ca_scene_calibration_v1.npz`直接运行。完整原始校准轨迹留在本地审查ZIP，不上传Git。
+
+只复现一个注册交叉场景的三方法实际闭环，无需重建校准库：
+
+```powershell
+.\.venv-stage1\Scripts\python.exe run_stage4.py run-risk --methods B0 B1 B2 --split test --case crossing3d_v02_s410102 --alpha .1 --library artifacts_stage4/ca_scene_calibration_v1.npz --workers 1 --out results_stage4/my_crossing_risk_pair
+Start-Process .\results_stage4\my_crossing_risk_pair\cases\crossing3d_v02_s410102__B2__alpha0.1\replay_3d.html
+```
+
+阶段4的[实际结果](docs_stage4/RESULTS.md)、[测试报告](docs_stage4/TEST_REPORT.md)、[失败分析](docs_stage4/FAILURE_ANALYSIS.md)和[后续验证接口](docs_stage4/NEXT_STEPS.md)分别记录到达、安全、校准及计算边界。B1使用全场景、全24秒统一球，不是原P25逐时域/速度分箱的完整复现；不能据此宣称优于完整P25。地形场景没有动态障碍，是共同导航负对照。
+
 阶段3研究分支新增共同六自由度实验配置：因果感知记忆、候选/应急动作对照、普通已知海床三维A*和可插拔障碍预测协议。阶段2默认值与原REMUS物理模型保留。当前进展及真实失败见 [共同基线](docs_stage3/COMMON_BASELINE.md)、[阶段3测试记录](docs_stage3/TEST_REPORT.md)。
 
 阶段3本轮最终全量回归556项通过；已实际执行记忆15、候选16、预测器8组及独立地形实验。研究性能失败仍存在，不能将全部代码测试通过当作全部避障安全。逐配置结果与因果比较范围见[实验协议](docs_stage3/EXPERIMENT_PROTOCOL.md)、[候选对照](docs_stage3/experiments/CANDIDATE_PILOT_SUMMARY.md)、[CA/PPLNM对照](docs_stage3/experiments/PREDICTOR_PILOT_SUMMARY.md)和[地形程序修复消融](docs_stage3/TERRAIN_ABLATION_README.md)。
@@ -274,4 +302,4 @@ results_stage2/                 独立阶段2结果，保留真实失败与成�
 
 `PythonVehicleSimulator/` 为 Thor I. Fossen 的上游源码快照，保留原水动力、控制器和执行器参数。上游：https://github.com/cybergalactic/PythonVehicleSimulator ，MIT许可见 [LICENSE](PythonVehicleSimulator/LICENSE)。原 `examples/` 图片与原测试保留。
 
-新增代码为工程重建，未实现ECP、声呐成像或实艇安全证明；`u³`积分仅为代理，`energy_joules=null`。
+阶段4已加入明确署名来源的ECP冻结离线风险试验，未实现作者完整在线ACP、声呐成像或实艇安全证明；`u³`积分仅为代理，`energy_joules=null`。

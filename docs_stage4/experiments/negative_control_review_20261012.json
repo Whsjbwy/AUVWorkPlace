@@ -1,0 +1,1088 @@
+{
+  "completed_local": "2026-10-12T13:33:42.708576+08:00",
+  "scope": "Completed actual terrain/Perlin negative controls; direct numerical comparison only.",
+  "batch_completion_checked": true,
+  "comparison_pairs": 20,
+  "unique_case_ids": [
+    "perlin_cruise_constrained3d_v00_s7",
+    "perlin_cruise_constrained3d_v03_s17",
+    "perlin_cruise_constrained3d_v07_s31",
+    "terrain3d_v01_s410401",
+    "terrain3d_v04_s410404",
+    "terrain3d_v06_s410406"
+  ],
+  "tune_pairs": 12,
+  "test_pairs": 8,
+  "all_pairs_equal": true,
+  "failed_pairs": [],
+  "ignored_fields": [
+    "wall-clock timing",
+    "plot metadata",
+    "risk method identity and risk policy records"
+  ],
+  "checksum_used": false,
+  "source_or_online_config_changed": false,
+  "interpretation": "Equality checks risk treatment has no numerical effect with zero observed obstacles. It does not prove general navigation or ECP benefit.",
+  "pairs": [
+    {
+      "case_id": "terrain3d_v01_s410401",
+      "family": "terrain3d",
+      "split": "tune",
+      "method": "B1",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/terrain3d_v01_s410401",
+      "comparison": "results_stage4/tune_risk_20261012/cases/terrain3d_v01_s410401__B1__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          6517,
+          16
+        ],
+        "comparison_shape": [
+          6517,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6516,
+          16
+        ],
+        "comparison_shape": [
+          6516,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          66,
+          4
+        ],
+        "comparison_shape": [
+          66,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "terrain3d_v01_s410401",
+      "family": "terrain3d",
+      "split": "tune",
+      "method": "B1",
+      "alpha": 0.2,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/terrain3d_v01_s410401",
+      "comparison": "results_stage4/tune_risk_20261012/cases/terrain3d_v01_s410401__B1__alpha0.2",
+      "states": {
+        "baseline_shape": [
+          6517,
+          16
+        ],
+        "comparison_shape": [
+          6517,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6516,
+          16
+        ],
+        "comparison_shape": [
+          6516,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          66,
+          4
+        ],
+        "comparison_shape": [
+          66,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "terrain3d_v01_s410401",
+      "family": "terrain3d",
+      "split": "tune",
+      "method": "B1",
+      "alpha": 0.3,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/terrain3d_v01_s410401",
+      "comparison": "results_stage4/tune_risk_20261012/cases/terrain3d_v01_s410401__B1__alpha0.3",
+      "states": {
+        "baseline_shape": [
+          6517,
+          16
+        ],
+        "comparison_shape": [
+          6517,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6516,
+          16
+        ],
+        "comparison_shape": [
+          6516,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          66,
+          4
+        ],
+        "comparison_shape": [
+          66,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "terrain3d_v01_s410401",
+      "family": "terrain3d",
+      "split": "tune",
+      "method": "B2",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/terrain3d_v01_s410401",
+      "comparison": "results_stage4/tune_risk_20261012/cases/terrain3d_v01_s410401__B2__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          6517,
+          16
+        ],
+        "comparison_shape": [
+          6517,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6516,
+          16
+        ],
+        "comparison_shape": [
+          6516,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          66,
+          4
+        ],
+        "comparison_shape": [
+          66,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "terrain3d_v01_s410401",
+      "family": "terrain3d",
+      "split": "tune",
+      "method": "B2",
+      "alpha": 0.2,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/terrain3d_v01_s410401",
+      "comparison": "results_stage4/tune_risk_20261012/cases/terrain3d_v01_s410401__B2__alpha0.2",
+      "states": {
+        "baseline_shape": [
+          6517,
+          16
+        ],
+        "comparison_shape": [
+          6517,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6516,
+          16
+        ],
+        "comparison_shape": [
+          6516,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          66,
+          4
+        ],
+        "comparison_shape": [
+          66,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "terrain3d_v01_s410401",
+      "family": "terrain3d",
+      "split": "tune",
+      "method": "B2",
+      "alpha": 0.3,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/terrain3d_v01_s410401",
+      "comparison": "results_stage4/tune_risk_20261012/cases/terrain3d_v01_s410401__B2__alpha0.3",
+      "states": {
+        "baseline_shape": [
+          6517,
+          16
+        ],
+        "comparison_shape": [
+          6517,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6516,
+          16
+        ],
+        "comparison_shape": [
+          6516,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          66,
+          4
+        ],
+        "comparison_shape": [
+          66,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "perlin_cruise_constrained3d_v00_s7",
+      "family": "perlin_cruise_constrained3d",
+      "split": "tune",
+      "method": "B1",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/perlin_cruise_constrained3d_v00_s7",
+      "comparison": "results_stage4/tune_risk_20261012/cases/perlin_cruise_constrained3d_v00_s7__B1__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          7131,
+          16
+        ],
+        "comparison_shape": [
+          7131,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          7130,
+          16
+        ],
+        "comparison_shape": [
+          7130,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          72,
+          4
+        ],
+        "comparison_shape": [
+          72,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "perlin_cruise_constrained3d_v00_s7",
+      "family": "perlin_cruise_constrained3d",
+      "split": "tune",
+      "method": "B1",
+      "alpha": 0.2,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/perlin_cruise_constrained3d_v00_s7",
+      "comparison": "results_stage4/tune_risk_20261012/cases/perlin_cruise_constrained3d_v00_s7__B1__alpha0.2",
+      "states": {
+        "baseline_shape": [
+          7131,
+          16
+        ],
+        "comparison_shape": [
+          7131,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          7130,
+          16
+        ],
+        "comparison_shape": [
+          7130,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          72,
+          4
+        ],
+        "comparison_shape": [
+          72,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "perlin_cruise_constrained3d_v00_s7",
+      "family": "perlin_cruise_constrained3d",
+      "split": "tune",
+      "method": "B1",
+      "alpha": 0.3,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/perlin_cruise_constrained3d_v00_s7",
+      "comparison": "results_stage4/tune_risk_20261012/cases/perlin_cruise_constrained3d_v00_s7__B1__alpha0.3",
+      "states": {
+        "baseline_shape": [
+          7131,
+          16
+        ],
+        "comparison_shape": [
+          7131,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          7130,
+          16
+        ],
+        "comparison_shape": [
+          7130,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          72,
+          4
+        ],
+        "comparison_shape": [
+          72,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "perlin_cruise_constrained3d_v00_s7",
+      "family": "perlin_cruise_constrained3d",
+      "split": "tune",
+      "method": "B2",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/perlin_cruise_constrained3d_v00_s7",
+      "comparison": "results_stage4/tune_risk_20261012/cases/perlin_cruise_constrained3d_v00_s7__B2__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          7131,
+          16
+        ],
+        "comparison_shape": [
+          7131,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          7130,
+          16
+        ],
+        "comparison_shape": [
+          7130,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          72,
+          4
+        ],
+        "comparison_shape": [
+          72,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "perlin_cruise_constrained3d_v00_s7",
+      "family": "perlin_cruise_constrained3d",
+      "split": "tune",
+      "method": "B2",
+      "alpha": 0.2,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/perlin_cruise_constrained3d_v00_s7",
+      "comparison": "results_stage4/tune_risk_20261012/cases/perlin_cruise_constrained3d_v00_s7__B2__alpha0.2",
+      "states": {
+        "baseline_shape": [
+          7131,
+          16
+        ],
+        "comparison_shape": [
+          7131,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          7130,
+          16
+        ],
+        "comparison_shape": [
+          7130,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          72,
+          4
+        ],
+        "comparison_shape": [
+          72,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "perlin_cruise_constrained3d_v00_s7",
+      "family": "perlin_cruise_constrained3d",
+      "split": "tune",
+      "method": "B2",
+      "alpha": 0.3,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/perlin_cruise_constrained3d_v00_s7",
+      "comparison": "results_stage4/tune_risk_20261012/cases/perlin_cruise_constrained3d_v00_s7__B2__alpha0.3",
+      "states": {
+        "baseline_shape": [
+          7131,
+          16
+        ],
+        "comparison_shape": [
+          7131,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          7130,
+          16
+        ],
+        "comparison_shape": [
+          7130,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          72,
+          4
+        ],
+        "comparison_shape": [
+          72,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "terrain3d_v04_s410404",
+      "family": "terrain3d",
+      "split": "test",
+      "method": "B1",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/terrain3d_v04_s410404",
+      "comparison": "results_stage4/test_risk_20261012/cases/terrain3d_v04_s410404__B1__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          6667,
+          16
+        ],
+        "comparison_shape": [
+          6667,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6666,
+          16
+        ],
+        "comparison_shape": [
+          6666,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          67,
+          4
+        ],
+        "comparison_shape": [
+          67,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "terrain3d_v04_s410404",
+      "family": "terrain3d",
+      "split": "test",
+      "method": "B2",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/terrain3d_v04_s410404",
+      "comparison": "results_stage4/test_risk_20261012/cases/terrain3d_v04_s410404__B2__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          6667,
+          16
+        ],
+        "comparison_shape": [
+          6667,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6666,
+          16
+        ],
+        "comparison_shape": [
+          6666,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          67,
+          4
+        ],
+        "comparison_shape": [
+          67,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "terrain3d_v06_s410406",
+      "family": "terrain3d",
+      "split": "test",
+      "method": "B1",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/terrain3d_v06_s410406",
+      "comparison": "results_stage4/test_risk_20261012/cases/terrain3d_v06_s410406__B1__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          7062,
+          16
+        ],
+        "comparison_shape": [
+          7062,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          7061,
+          16
+        ],
+        "comparison_shape": [
+          7061,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          71,
+          4
+        ],
+        "comparison_shape": [
+          71,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "terrain3d_v06_s410406",
+      "family": "terrain3d",
+      "split": "test",
+      "method": "B2",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/terrain3d_v06_s410406",
+      "comparison": "results_stage4/test_risk_20261012/cases/terrain3d_v06_s410406__B2__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          7062,
+          16
+        ],
+        "comparison_shape": [
+          7062,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          7061,
+          16
+        ],
+        "comparison_shape": [
+          7061,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          71,
+          4
+        ],
+        "comparison_shape": [
+          71,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "perlin_cruise_constrained3d_v03_s17",
+      "family": "perlin_cruise_constrained3d",
+      "split": "test",
+      "method": "B1",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/perlin_cruise_constrained3d_v03_s17",
+      "comparison": "results_stage4/test_risk_20261012/cases/perlin_cruise_constrained3d_v03_s17__B1__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          6860,
+          16
+        ],
+        "comparison_shape": [
+          6860,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6859,
+          16
+        ],
+        "comparison_shape": [
+          6859,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          69,
+          4
+        ],
+        "comparison_shape": [
+          69,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "perlin_cruise_constrained3d_v03_s17",
+      "family": "perlin_cruise_constrained3d",
+      "split": "test",
+      "method": "B2",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/perlin_cruise_constrained3d_v03_s17",
+      "comparison": "results_stage4/test_risk_20261012/cases/perlin_cruise_constrained3d_v03_s17__B2__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          6860,
+          16
+        ],
+        "comparison_shape": [
+          6860,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6859,
+          16
+        ],
+        "comparison_shape": [
+          6859,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          69,
+          4
+        ],
+        "comparison_shape": [
+          69,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "perlin_cruise_constrained3d_v07_s31",
+      "family": "perlin_cruise_constrained3d",
+      "split": "test",
+      "method": "B1",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/perlin_cruise_constrained3d_v07_s31",
+      "comparison": "results_stage4/test_risk_20261012/cases/perlin_cruise_constrained3d_v07_s31__B1__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          6733,
+          16
+        ],
+        "comparison_shape": [
+          6733,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6732,
+          16
+        ],
+        "comparison_shape": [
+          6732,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          68,
+          4
+        ],
+        "comparison_shape": [
+          68,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    },
+    {
+      "case_id": "perlin_cruise_constrained3d_v07_s31",
+      "family": "perlin_cruise_constrained3d",
+      "split": "test",
+      "method": "B2",
+      "alpha": 0.1,
+      "baseline": "results_stage4/risk_pilot_B0_20261012_1030/cases/perlin_cruise_constrained3d_v07_s31",
+      "comparison": "results_stage4/test_risk_20261012/cases/perlin_cruise_constrained3d_v07_s31__B2__alpha0.1",
+      "states": {
+        "baseline_shape": [
+          6733,
+          16
+        ],
+        "comparison_shape": [
+          6733,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "controls": {
+        "baseline_shape": [
+          6732,
+          16
+        ],
+        "comparison_shape": [
+          6732,
+          16
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "time_and_actions": {
+        "baseline_shape": [
+          68,
+          4
+        ],
+        "comparison_shape": [
+          68,
+          4
+        ],
+        "shape_equal": true,
+        "exact_values_equal": true,
+        "maximum_absolute_difference": 0.0
+      },
+      "selected_prediction_arrays_exact_equal": true,
+      "selected_prediction_maximum_absolute_difference": 0.0,
+      "selected_decision_metadata_equal": true,
+      "actual_navigation_outcomes_equal": true,
+      "all_checked_numbers_equal": true
+    }
+  ]
+}

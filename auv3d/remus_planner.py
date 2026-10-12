@@ -48,6 +48,7 @@ class RemusPlanResult:
     selected_backup_index: int | None = None
     planning_goal: tuple[float, float, float] | None = None
     forecast_records: tuple[dict, ...] = ()
+    risk_records: tuple[dict, ...] = ()
 
     @property
     def command(self) -> np.ndarray:
@@ -371,12 +372,19 @@ class RemusDWA:
     No candidate is considered safe because its cheap rollout passed a test.
     """
 
-    def __init__(self, cfg, forecaster=None):
+    def __init__(self, cfg, forecaster=None, risk_policy=None):
         cfg.validate()
         self.cfg = cfg
         self.forecasts = ForecastContext(cfg, forecaster)
         self.memory_uncertainty = {}
         self.previous: ReferenceAction | None = None
+        self.risk_policy = risk_policy
+
+    def _risk_clearance(self, states, terrain, tracks, now, base_clear):
+        if self.risk_policy is None:
+            return base_clear, None
+        return self.risk_policy.adjust(states, terrain, tracks, now, self.cfg,
+                                       self.forecasts, base_clear)
 
     def set_memory_uncertainty(self, uncertainty_by_id):
         self.memory_uncertainty = dict(uncertainty_by_id)
@@ -414,6 +422,7 @@ class RemusDWA:
         evaluations = []
         backup_evaluations = []
         selected_backup_index = None
+        risk_records = []
         for index in shortlist:
             action = actions[index]
             prediction, row = _evaluate_reference(
@@ -423,6 +432,14 @@ class RemusDWA:
             if row['prediction_failure'] is not None:
                 failures += 1
                 continue
+            clear, risk = self._risk_clearance(prediction.states, terrain, tracks, now,
+                                               row['minimum_predicted_clearance_m'])
+            if risk is not None:
+                risk_records.append(dict(risk, candidate_index=int(index), action_kind='candidate'))
+                row['risk'] = risk
+                row['minimum_predicted_clearance_m'] = float(clear)
+                row['cost'] = float(self._cost(prediction.positions[-1], action, clear, plant, goal))
+                row['feasible'] = bool(clear >= cfg.safety_margin_m)
             if row['feasible']:
                 valid.append((row['cost'], action, prediction.states, row['minimum_predicted_clearance_m']))
         if valid:
@@ -441,6 +458,9 @@ class RemusDWA:
                 prediction = predict_reference(plant, action, cfg.horizon_s, cfg.physics_dt, record_controls=False)
                 states = prediction.states
                 clear = trajectory_clearance(states, terrain, tracks, now, cfg, self.forecasts)
+                clear, risk = self._risk_clearance(states, terrain, tracks, now, clear)
+                if risk is not None:
+                    risk_records.append(dict(risk, candidate_index=0, action_kind='emergency_coast'))
             elif policy == 'verified_backup':
                 options = []
                 for index, (label, backup) in enumerate(backup_references(plant, goal, cfg)):
@@ -452,6 +472,10 @@ class RemusDWA:
                         candidate = predict_reference(plant, backup, cfg.horizon_s, cfg.physics_dt,
                                                       record_controls=False)
                         gap = trajectory_clearance(candidate.states, terrain, tracks, now, cfg, self.forecasts)
+                        gap, risk = self._risk_clearance(candidate.states, terrain, tracks, now, gap)
+                        if risk is not None:
+                            risk_records.append(dict(risk, candidate_index=index, action_kind='backup'))
+                            row['risk'] = risk
                         cost = self._cost(candidate.positions[-1], backup, gap, plant, goal)
                         if not np.isfinite(cost):
                             raise FloatingPointError('six-DOF backup cost must be finite')
@@ -504,4 +528,5 @@ class RemusDWA:
             selected_backup_index=selected_backup_index,
             planning_goal=tuple(float(value) for value in goal),
             forecast_records=tuple(self.forecasts.records),
+            risk_records=tuple(risk_records),
         )
