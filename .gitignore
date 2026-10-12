@@ -42,6 +42,11 @@ artifacts_stage1/pplnm_smoke/*
 !artifacts_stage1/pplnm_smoke/pplnm_calibration.json
 !artifacts_stage1/pplnm_smoke/ca_calibration.json
 
+# Small frozen inference library; full calibration episodes stay in results*/.
+artifacts_stage4/*
+!artifacts_stage4/README.md
+!artifacts_stage4/ca_scene_calibration_v1.npz
+
 # Credentials and local agent/runtime state are never project deliverables.
 .env
 .env.*

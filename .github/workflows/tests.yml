@@ -51,8 +51,8 @@ jobs:
         run: python -c "from pathlib import Path; import torch; from auv3d.prediction import PPLNMPredictor; paths=[Path('artifacts_stage1')/name/'pplnm.pt' for name in ('pplnm_150','pplnm_smoke')]; [PPLNMPredictor(p) for p in paths]; print('CPU torch:',torch.__version__,'; inference fixtures loaded:',len(paths))"
       - name: Create independent test output directory
         run: python -c "from pathlib import Path; import os; Path(os.environ['RUNNER_TEMP'],'auv-tests').mkdir(parents=True,exist_ok=True)"
-      - name: Run original and stage 1 / stage 2 / stage 3 tests
+      - name: Run original and stage 1 / stage 2 / stage 3 / stage 4 tests
         working-directory: ${{ runner.temp }}/auv-tests
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: python -m pytest "${{ github.workspace }}/PythonVehicleSimulator/tests" "${{ github.workspace }}/tests_stage1" "${{ github.workspace }}/tests_stage2" "${{ github.workspace }}/tests_stage3" -q --basetemp "${{ runner.temp }}/auv-tests/pytest" --junitxml "${{ runner.temp }}/auv-tests/junit.xml" -o "cache_dir=${{ runner.temp }}/auv-tests/cache"
+        run: python -m pytest "${{ github.workspace }}/PythonVehicleSimulator/tests" "${{ github.workspace }}/tests_stage1" "${{ github.workspace }}/tests_stage2" "${{ github.workspace }}/tests_stage3" "${{ github.workspace }}/tests_stage4" -q --basetemp "${{ runner.temp }}/auv-tests/pytest" --junitxml "${{ runner.temp }}/auv-tests/junit.xml" -o "cache_dir=${{ runner.temp }}/auv-tests/cache"
