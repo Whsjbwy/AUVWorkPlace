@@ -49,16 +49,30 @@ def initialize_plant(scene, cfg):
     return plant
 
 
-def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_policy=None):
+def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_policy=None,
+                      forecaster=None, scene=None, planning_delay_mode='none',
+                      planning_delay_s=0.):
     """Run the actual plant; optional diagnostics receive isolated copies only.
 
     ``on_plan(plant, tracks, now, plan, scene)`` is an offline observation hook.
     Its return value is ignored and it cannot change live controller/obstacle
     state. Wall time spent in this hook is excluded from planner latency.
+
+    Opt-in serial-worker latency experiments advance the original physical
+    plant, obstacle clock and sensors under the previous command until the
+    computed command is ready. The decision uses only observations delivered
+    at its start. ``measured`` injects rounded-up measured planner wall time;
+    ``fixed`` injects the explicitly supplied duration. Defaults retain the
+    historical synchronous simulation exactly.
     """
     cfg = cfg or Stage2Config()
     cfg.validate()
-    scene = make_stage2_scenario(scenario, cfg)
+    if planning_delay_mode not in ('none', 'fixed', 'measured'):
+        raise ValueError('planning_delay_mode must be none, fixed or measured')
+    if (not np.isfinite(planning_delay_s) or planning_delay_s < 0
+            or (planning_delay_mode != 'fixed' and planning_delay_s != 0)):
+        raise ValueError('planning_delay_s must be nonnegative and only used in fixed mode')
+    scene = scene if scene is not None else make_stage2_scenario(scenario, cfg)
     terrain, obstacles, goal = scene.terrain, scene.obstacles, np.asarray(scene.goal)
     plant = initialize_plant(scene, cfg)
     sonar_cfg = cfg.sensor_config()
@@ -71,7 +85,7 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
             xy_step_m=cfg.terrain_astar_xy_step_m, depth_step_m=cfg.terrain_astar_depth_step_m,
             max_grade=cfg.terrain_astar_max_grade, waypoint_tolerance_m=cfg.terrain_waypoint_tolerance_m,
             lookahead_m=cfg.terrain_lookahead_m, max_nodes=cfg.terrain_astar_max_nodes))
-    guidance, planner = RemusGuidance(), RemusDWA(cfg, risk_policy=risk_policy)
+    guidance, planner = RemusGuidance(), RemusDWA(cfg, forecaster=forecaster, risk_policy=risk_policy)
     dt = cfg.physics_dt
     control_n, obs_n = round(cfg.control_dt/dt), round(cfg.observation_period_s/dt)
     total = round(cfg.max_time_s/dt)
@@ -80,6 +94,7 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
     memory_log, guidance_log = [], []
     pending = []
     pending_commands = []
+    next_planning_step = 0
     actual_min = float('inf')
     interacted = set()
     observed_unique = set()
@@ -136,7 +151,7 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
             delivered.extend(observations)
         # Timestamps remain measurement time, never delivery time or future truth.
         memory.update(delivered, t, ego_position=plant.eta[:3])
-        if step % control_n == 0:
+        if step >= next_planning_step:
             tracks = memory.current(t)
             maximum_tracked = max(maximum_tracked, len(tracks))
             maximum_observation_age = max(maximum_observation_age,
@@ -150,10 +165,21 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
                                  'progress_m':terrain_guide.progress_m,
                                  'unreachable_target_count':terrain_guide.unreachable_target_count})
             plan = planner.plan(plant, planning_goal, terrain, tracks, t)
-            pending_commands.append((t+cfg.command_delay_s, t, plan))
+            computation_s = (plan.planning_ms / 1000. if planning_delay_mode == 'measured'
+                             else planning_delay_s if planning_delay_mode == 'fixed' else 0.)
+            if not np.isfinite(computation_s) or computation_s < 0:
+                raise FloatingPointError('planner latency must be finite and nonnegative')
+            computation_steps = int(np.ceil(computation_s / dt - 1e-12))
+            computation_delay_s = computation_steps * dt
+            ready_time = t + computation_delay_s + cfg.command_delay_s
+            # A single worker cannot begin another decision while busy. Missed
+            # periods are recorded; no future command is applied early.
+            next_planning_step = step + max(control_n, computation_steps)
+            pending_commands.append((ready_time, t, plan))
             planning.append([t,plan.planning_ms,plan.candidate_count,plan.verified_count,plan.valid_count,
                              plan.minimum_predicted_clearance_m,len(tracks),int(plan.feasible),plan.prediction_fallback_count])
-            plans.append({'time_s':t,'command_application_time_s':t+cfg.command_delay_s,
+            plans.append({'time_s':t,'command_application_time_s':ready_time,
+                          'planning_computation_delay_s':computation_delay_s,
                           'action':[plan.action.depth_m,plan.action.heading_rad,plan.action.rpm],
                           'states':plan.states.copy(),'feasible':plan.feasible,
                           'validation_backend':'original_remus6dof','reason':plan.reason,
@@ -163,6 +189,9 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
                           'forecast_records':list(plan.forecast_records)})
             plan_diagnostics.append({
                 'time_s':t,'reason':plan.reason,'feasible':bool(plan.feasible),
+                'command_ready_time_s':ready_time,
+                'planning_computation_delay_s':computation_delay_s,
+                'planning_delay_mode':planning_delay_mode,
                 'candidate_count':plan.candidate_count,'verified_count':plan.verified_count,
                 'valid_count':plan.valid_count,'prediction_failure_count':plan.prediction_failure_count,
                 'emergency_verified_safe':plan.emergency_verified_safe,
@@ -170,6 +199,7 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
                 'candidate_scheme':plan.candidate_scheme,'shortlist_policy':plan.shortlist_policy,
                 'emergency_policy':plan.emergency_policy,
                 'backup_evaluations':list(plan.backup_evaluations),
+                'candidate_evaluations':list(plan.candidate_evaluations),
                 'backup_verified_count':plan.backup_verified_count,
                 'backup_safe_count':plan.backup_safe_count,
                 'selected_backup_index':plan.selected_backup_index,
@@ -189,10 +219,12 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
         while pending_commands and pending_commands[0][0] <= t+1e-9:
             _, plan_time, executing_plan = pending_commands.pop(0)
             action = executing_plan.action
-            if cfg.command_delay_s:
+            if cfg.command_delay_s or planning_delay_mode != 'none':
                 events.append({'time_s':t,'kind':'delayed_command_applied',
                                'position':plant.eta[:3].tolist(),'plan_time_s':plan_time,
-                               'configured_delay_s':cfg.command_delay_s})
+                               'configured_delay_s':cfg.command_delay_s,
+                               'actual_total_delay_s':t-plan_time,
+                               'planning_delay_mode':planning_delay_mode})
         old = plant.eta[:3].copy()
         sample = guidance.step(plant, action, dt)
         obstacles.step(dt)
@@ -277,8 +309,14 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
         'planning_ms_median':float(np.median(latencies)),'planning_ms_p95':float(np.percentile(latencies,95)),
         'planning_ms_max':float(np.max(latencies)),
         'planning_exceeds_control_period_count':int(np.sum(latencies > cfg.control_dt*1000)),
-        'planning_execution_timing':('fixed command-delay sensitivity experiment; previous reference remains active during configured delay; wall-clock planning latency is measured separately'
+        'planning_execution_timing':('serial worker physical latency experiment; previous reference, physical obstacles and sensors continue until command ready; computation rounded up to physical ticks'
+                                     if planning_delay_mode != 'none' else
+                                     'fixed command-delay sensitivity experiment; previous reference remains active during configured delay; wall-clock planning latency is measured separately'
                                      if cfg.command_delay_s else 'synchronous offline simulation; physics time pauses during planning; measured wall-clock latency is not injected as an execution delay'),
+        'planning_delay_mode':planning_delay_mode,
+        'planning_delay_s':planning_delay_s if planning_delay_mode == 'fixed' else None,
+        'planning_computation_delay_mean_s':float(np.mean([p['planning_computation_delay_s'] for p in plan_diagnostics])) if plan_diagnostics else 0.,
+        'planning_computation_delay_max_s':max((p['planning_computation_delay_s'] for p in plan_diagnostics),default=0.),
         'command_delay_s':cfg.command_delay_s,
         'prediction_position_rmse_m':float(np.sqrt(np.mean(errors[:,3]**2))) if len(errors) else None,
         'prediction_position_max_error_m':float(np.max(errors[:,3])) if len(errors) else None,
@@ -302,16 +340,16 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
         'terrain_guidance':cfg.terrain_guidance,'terrain_guidance_metrics':terrain_guide.metrics,
         'initialization':'physical warmup then translation to start; controller, velocity and actuator states retained',
         'warmup_s':cfg.warmup_s,'hydrodynamic_parameters_modified':False,
-        'prediction':cfg.obstacle_predictor+' obstacle forecast + full REMUS shortlisted vehicle rollout; '+
+        'prediction':getattr(forecaster,'name',cfg.obstacle_predictor)+' obstacle forecast + full REMUS shortlisted vehicle rollout; '+
                      (risk_policy.description if risk_policy is not None else 'no ECP'),
         'risk_method':risk_policy.method if risk_policy is not None else 'B0',
         'risk_metadata':risk_policy.metadata if risk_policy is not None else {},
-        'obstacle_predictor':cfg.obstacle_predictor,
+        'obstacle_predictor':getattr(forecaster,'name',cfg.obstacle_predictor),
         'prediction_history_dt_s':(3.0 if cfg.obstacle_predictor=='pplnm' else
                                    cfg.prediction_history_dt_s or cfg.observation_period_s),
         'pplnm_trained_horizon_s':9.0 if cfg.obstacle_predictor=='pplnm' else None,
         'pplnm_extension_mode':cfg.pplnm_extension_mode if cfg.obstacle_predictor=='pplnm' else 'not_applicable',
-        'calibrated_radii_applied':bool(risk_policy is not None and risk_policy.method != 'B0'),
+        'calibrated_radii_applied':bool(risk_policy is not None and risk_policy.method not in ('B0','A0','A1')),
         'safety_claim':'finite-horizon model check only; emergency does not imply safe stopping',
         'energy_joules':None,'scene_metadata':scene.metadata,
     }

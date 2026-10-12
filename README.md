@@ -1,5 +1,16 @@
 # AUVWorkPlace
 
+阶段5增加风险公平性验证入口[A0–A5方法说明](docs_stage5/RISK_METHODS.md)、[独立数据协议](docs_stage5/PROTOCOL.md)和[PowerShell运行方法](docs_stage5/RUNNING.md)。A1在独立tune场景选择固定裕量；A2按预测时刻及观测速度分组；A3/A4保留阶段4分数形式但用新的匹配校准池；A5为待验证的逐时刻候选相关工程适配。CA、CV与滤波CV分别校准，add/replace单独记录。所有方案保留原REMUS、真实1米净间隙与5米到达判据，阶段4代码、校准和108次历史实验保留。
+
+```powershell
+.\.venv-stage1\Scripts\python.exe -m pytest PythonVehicleSimulator/tests tests_stage1 tests_stage2 tests_stage3 tests_stage4 tests_stage5 -q
+.\.venv-stage1\Scripts\python.exe run_stage5.py manifest --phase formal
+.\.venv-stage1\Scripts\python.exe scripts_stage5/prepare_data.py --phase formal --obstacle-only --out results_stage5/my_formal_data
+.\.venv-stage1\Scripts\python.exe run_stage5.py run-study --phase formal --split test --methods A0 A2 A3 A4 A5 --alpha .1 --combination replace --artifacts results_stage5/my_formal_data/ARTIFACT_REGISTRY.json --workers 1 --out results_stage5/my_formal_risk
+```
+
+`--delay-mode measured`显式让规划计算耗时消耗物理时间，期间旧参考继续作用、障碍和传感器继续更新；默认none仍为暂停物理时钟的离线实验。A1须先完成独立tune扫描并冻结，见运行说明。逐时刻覆盖、全时域覆盖、实际碰撞和任务到达分别统计，不承诺闭环概率安全。
+
 阶段4增加CA风险处理最小试验：B0原工程包络、B1独立校准误差球、B2候选相关ECP扫掠间隙校准。三者共享原REMUS、45/9候选、CA、感知、普通海床A*及1米安全标准。B2是借鉴既有ECP的冻结离线工程适配，未实现作者完整在线ACP，也没有闭环概率安全保证。场景、数据划分与方法细节见[阶段4协议](docs_stage4/PROTOCOL.md)、[风险方法](docs_stage4/RISK_METHODS.md)。阶段2/3默认行为继续保留。
 
 ```powershell

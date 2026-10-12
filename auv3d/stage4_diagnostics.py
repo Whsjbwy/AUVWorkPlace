@@ -62,7 +62,7 @@ class ReplayAnchor:
     scenario: str
 
 
-def replay_anchors(case_dir, cfg=None, scenario=None, anchors=DEFAULT_ANCHORS_S):
+def replay_anchors(case_dir, cfg=None, scenario=None, anchors=DEFAULT_ANCHORS_S, *, scene=None):
     """Yield isolated, causally checked anchors after exact full-episode replay.
 
     Only fixed requested planning times with delivered tracks are returned.
@@ -101,7 +101,7 @@ def replay_anchors(case_dir, cfg=None, scenario=None, anchors=DEFAULT_ANCHORS_S)
     packets = _json(directory / "observations.json")
     if any(not isinstance(value, list) for value in (diagnostics, selected, packets)):
         raise ValueError("archived planning and observation logs must be lists")
-    scene = make_stage2_scenario(scenario, cfg)
+    scene = scene if scene is not None else make_stage2_scenario(scenario, cfg)
     plant = initialize_plant(scene, cfg)
     frames = []
     for tick, state in enumerate(states):
@@ -164,10 +164,11 @@ class OfflineTruthReplay:
     horizon.  That trajectory is counterfactual after the next replanning call;
     these results are neither actual task collisions nor all-candidate rates.
     """
-    def __init__(self, cfg, scenario, saved_snapshots=None):
+    def __init__(self, cfg, scenario, saved_snapshots=None, *, scene=None, forecaster=None):
         cfg.validate()
         self.cfg, self.scenario = cfg, scenario
-        self._scene = make_stage2_scenario(scenario, cfg)
+        self._scene = scene if scene is not None else make_stage2_scenario(scenario, cfg)
+        self.forecaster = forecaster
         snapshot = self._scene.obstacles.snapshot()
         self.ids = np.asarray(snapshot.ids, dtype=int)
         self.radii = np.asarray(snapshot.radii, dtype=float)
@@ -251,7 +252,7 @@ class OfflineTruthReplay:
                 path[:-1, None, :], path[1:, None, :], truth[:-1], truth[1:],
                 self.radii[None, :]+cfg.body_radius_m)
             actual_all = min(actual_all, float(np.min(truth_gaps)))
-        context = ForecastContext(cfg)
+        context = ForecastContext(cfg, self.forecaster)
         context.begin(uncertainty_by_id)
         predictions, observed_labels, pred_gaps, observed_gaps = [], [], [], []
         for track in tracks:
