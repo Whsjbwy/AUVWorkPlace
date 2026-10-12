@@ -1,0 +1,16 @@
+{
+  "registration": "stage5_risk_validation_v1",
+  "methods": ["A0", "A1", "A2", "A3", "A4", "A5"],
+  "primary": {"phase": "formal", "split": "test", "predictor": "ca", "noise_std_m": 0.02, "alpha": 0.1, "risk_combination": "replace", "planning_delay_mode": "none", "case_count": 12},
+  "common": {"physics_dt_s": 0.02, "control_dt_s": 2.0, "horizon_s": 24.0, "reference_grid_count": 45, "full_candidate_budget": 9, "actual_net_clearance_m": 1.0, "goal_tolerance_m": 5.0, "max_time_s": 200.0, "emergency_policy": "coast"},
+  "fixed_margin_tuning": {"phase": "formal", "split": "tune", "case_count": 6, "predictor": "ca", "noise_std_m": 0.02, "margins_m": [0.0, 0.75, 3.0, 6.0], "combinations": ["add", "replace"], "selection": "maximize safe arrival; then minimize collisions, actual margin violations, timeout, no-feasible count and margin"},
+  "additive_ablation": {"methods": ["A1", "A2", "A3", "A4", "A5"], "case_variant": "first formal test variant g14 in each of four obstacle families", "risk_combination": "add"},
+  "timing": {"workers": 1, "threads_per_runtime": 1, "anchors_s": [20.0, 40.0, 60.0], "paired_method_order": "rotate deterministic A0-A5 order by anchor; no concurrent experiment jobs", "scope": "same actual states and delivered histories; OS load is observed, not controlled"},
+  "physical_delay": {"phase": "formal", "scenario": "multi_crossing3d", "case_variant": "g14", "methods": ["A0", "A1", "A2", "A3", "A4", "A5"], "workers": 1, "modes": ["measured"], "old_reference_continues": true, "new_command_applied_only_when_ready": true},
+  "predictor_diagnostic": {"predictors": ["ca", "cv", "filtered_cv"], "noise_std_m": [0.0, 0.02, 0.1], "horizons_s": [3, 6, 9, 12, 18, 24], "independent_library_per_predictor_and_noise": true},
+  "predictor_closed_loop_subset": {"methods": ["A2", "A5"], "static3d_g14": {"predictors": ["ca", "cv", "filtered_cv"], "noise_std_m": [0.0, 0.02, 0.1]}, "crossing3d_g14": {"predictors": ["ca", "cv", "filtered_cv"], "noise_std_m": [0.02]}, "risk_combination": "replace", "alpha": 0.1, "overlapping_primary_runs_reused_only_with_exact_same_actual_parameters": true},
+  "stage4_old_test_is_unseen": false,
+  "test_data_used_for_tuning": false,
+  "physical_parameters_modified": false,
+  "coverage_is_task_safety_probability": false
+}

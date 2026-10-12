@@ -23,9 +23,9 @@ electrical energy savings or real-time execution when those are absent.
 
 The owner has requested that quality-checked development stages be committed
 and pushed to `Whsjbwy/AUVWorkPlace` using research/feature branches, with a PR
-to `main` when available. Use `research/stage4-risk-pilot` for the current stage.
+to `main` when available. Use `research/stage5-risk-validation` for the current stage.
 Confirm the remote, inspect all changes and explicitly stage reviewed files.
-Run original PVS and stage1 through stage4 tests plus relevant actual simulations and
+Run original PVS and stage1 through stage5 tests plus relevant actual simulations and
 dependency checks first. Fix blocking program/test errors before publishing;
 documented research performance failures may remain on a research branch and
 must be disclosed in the PR. Never automatically merge, reset or overwrite
