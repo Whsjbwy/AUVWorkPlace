@@ -14,8 +14,10 @@ import numpy as np
 
 from .adapters.remus_guidance import ReferenceAction, predict_reference, validate_plant_state
 from .geometry import swept_sphere_clearance, wrap_pi
-from .prediction import CAPredictor
+from .stage3_forecasting import ForecastContext
 from .sensors import validate_track
+from .stage3_candidates import (backup_references, coast_reference, coverage_shortlist,
+                                 expanded_references, ranked_shortlist)
 
 
 @dataclass(frozen=True)
@@ -37,6 +39,15 @@ class RemusPlanResult:
     verification_model: str = 'original_remus100_full_6dof_autopilot_actuators'
     candidate_evaluations: tuple[dict, ...] = ()
     shortlist_indices: dict[str, list[int]] = field(default_factory=dict)
+    candidate_scheme: str = 'baseline45'
+    shortlist_policy: str = 'diverse'
+    emergency_policy: str = 'coast'
+    backup_evaluations: tuple[dict, ...] = ()
+    backup_verified_count: int = 0
+    backup_safe_count: int = 0
+    selected_backup_index: int | None = None
+    planning_goal: tuple[float, float, float] | None = None
+    forecast_records: tuple[dict, ...] = ()
 
     @property
     def command(self) -> np.ndarray:
@@ -68,36 +79,28 @@ def candidate_references(plant, goal, cfg) -> list[ReferenceAction]:
                     actions.append(action)
     if not actions:
         raise ValueError('REMUS reference grid is empty')
+    scheme = getattr(cfg, 'candidate_scheme', 'baseline45')
+    if scheme == 'expanded':
+        actions = expanded_references(plant, goal, cfg, actions)
+    elif scheme != 'baseline45':
+        raise ValueError(f'unknown REMUS candidate_scheme: {scheme}')
     return actions
 
 
-def _forecast_tracks(tracks, times, now, cfg):
+def _forecast_tracks(tracks, times, now, cfg, forecast_context=None):
     times = np.asarray(times, dtype=float)
     if not np.isfinite(now) or times.ndim != 1 or len(times) == 0 or not np.isfinite(times).all():
         raise ValueError('obstacle forecast requires finite now and one-dimensional finite offsets')
     if np.any(times < 0) or np.any(np.diff(times) <= 0):
         raise ValueError('obstacle forecast offsets must be nonnegative and strictly increasing')
-    predictor = CAPredictor(cfg.observation_period_s)
+    context = forecast_context or ForecastContext(cfg)
     forecasts = []
     for track in tracks:
-        validate_track(track, now)
-        observed_times = np.asarray(track.times, dtype=float)
-        observed_positions = np.asarray(track.positions, dtype=float)
-        positions = predictor.predict(track, now + times)
-        if np.shape(positions) != (len(times), 3):
-            raise ValueError('obstacle predictor must return [forecast_time,3] positions')
-        if not np.isfinite(positions).all():
-            raise FloatingPointError('nonfinite obstacle forecast')
-        age = max(0., now - track.times[-1])
-        speed = 0.
-        if len(observed_times) >= 2:
-            speed = np.linalg.norm(observed_positions[-1] - observed_positions[-2]) / (observed_times[-1] - observed_times[-2])
-        # This disclosed deterministic margin is not a calibrated guarantee.
-        margin = cfg.prediction_margin_m + age * max(1., speed)
-        radius = track.radius_m + cfg.body_radius_m + margin
-        if not np.isfinite([speed, margin, radius]).all():
-            raise FloatingPointError('nonfinite obstacle speed or uncertainty radius')
-        forecasts.append((positions, radius))
+        forecast = context.forecast(track, now + times, now)
+        radii = forecast.enclosing_radii_m
+        # Scalar compatibility preserves existing stage2 offline consumers.
+        radius = float(radii[0]) if np.all(radii == radii[0]) else radii
+        forecasts.append((forecast.positions, radius))
     return forecasts
 
 
@@ -115,6 +118,14 @@ def _clearance_positions(positions, terrain, forecasts, cfg):
     depth_clear = np.min(cfg.depth_limit_m - cfg.body_radius_m - points[..., 2], axis=-1)
     clear = np.minimum(terrain_clear, depth_clear)
     for obstacle, radius in forecasts:
+        radius = np.asarray(radius, dtype=float)
+        if not np.isfinite(radius).all() or np.any(radius <= 0):
+            raise ValueError('forecast radius must be finite and positive')
+        if radius.ndim:
+            if radius.shape != (points.shape[-2],):
+                raise ValueError('time-varying obstacle radius must match trajectory samples')
+            # The entire segment uses the larger endpoint radius.
+            radius = np.maximum(radius[:-1], radius[1:])
         swept = swept_sphere_clearance(points[..., :-1, :], points[..., 1:, :],
                                        obstacle[:-1], obstacle[1:], radius)
         clear = np.minimum(clear, swept.min(axis=-1))
@@ -123,11 +134,11 @@ def _clearance_positions(positions, terrain, forecasts, cfg):
     return clear
 
 
-def trajectory_clearance(states, terrain, tracks, now, cfg) -> float:
+def trajectory_clearance(states, terrain, tracks, now, cfg, forecast_context=None) -> float:
     """Conservative terrain and swept moving-sphere clearance at physical ticks.
 
-    The obstacle prediction is CA from causal observations. This checks a
-    six-DOF vehicle trajectory against that forecast; unseen motion changes are
+    The configured obstacle predictor receives only causal observations. This
+    checks a six-DOF vehicle trajectory against that forecast; unseen changes are
     handled by the real execution collision monitor, not claimed to be known.
     """
     rows = np.asarray(states, dtype=float)
@@ -137,7 +148,7 @@ def trajectory_clearance(states, terrain, tracks, now, cfg) -> float:
         raise FloatingPointError('REMUS trajectory must contain finite states')
     if abs(rows[0, 0]) > 1e-12:
         raise ValueError('REMUS trajectory offsets must start at zero')
-    forecasts = _forecast_tracks(tracks, rows[:, 0], now, cfg)
+    forecasts = _forecast_tracks(tracks, rows[:, 0], now, cfg, forecast_context)
     return float(_clearance_positions(rows[:, 1:4], terrain, forecasts, cfg))
 
 
@@ -208,13 +219,13 @@ def _diverse_shortlist(actions, fast_cost, budget):
     return chosen
 
 
-def _rank_reference_grid(plant, goal, terrain, tracks, now, cfg, cost_function):
+def _rank_reference_grid(plant, goal, terrain, tracks, now, cfg, cost_function, forecast_context=None):
     validate_plant_state(plant)
     if not np.isfinite(now) or abs(plant.time_s - now) > 1e-6:
         raise ValueError('planner now must match actual REMUS simulation time')
     actions = candidate_references(plant, goal, cfg)
     fast_times, fast_paths = _fast_rollouts(plant, actions, cfg)
-    fast_forecasts = _forecast_tracks(tracks, fast_times, now, cfg)
+    fast_forecasts = _forecast_tracks(tracks, fast_times, now, cfg, forecast_context)
     fast_clear = _clearance_positions(fast_paths, terrain, fast_forecasts, cfg)
     fast_cost = np.array([cost_function(path[-1], action, float(clear), plant, goal)
                           for path, action, clear in zip(fast_paths, actions, fast_clear)])
@@ -224,13 +235,23 @@ def _rank_reference_grid(plant, goal, terrain, tracks, now, cfg, cost_function):
     if not np.isfinite(fast_cost).all():
         raise FloatingPointError('reference ranking costs must be finite')
     budgets = dict.fromkeys((9, 18, 45, cfg.candidate_budget))
-    shortlists = {str(budget): [int(index) for index in _diverse_shortlist(actions, fast_cost, budget)]
+    policy = getattr(cfg, 'shortlist_policy', 'diverse')
+    selector = _shortlist_selector(policy)
+    shortlists = {str(budget): [int(index) for index in selector(actions, fast_cost, budget)]
                   for budget in budgets}
     return actions, fast_clear, fast_cost, shortlists
 
 
+def _shortlist_selector(policy):
+    selectors = {'diverse': _diverse_shortlist, 'ranked': ranked_shortlist,
+                 'coverage': coverage_shortlist}
+    if policy not in selectors:
+        raise ValueError(f'unknown REMUS shortlist_policy: {policy}')
+    return selectors[policy]
+
+
 def _evaluate_reference(index, action, plant, goal, terrain, tracks, now, cfg,
-                        cost_function, fast_clear, fast_cost, shortlists):
+                        cost_function, fast_clear, fast_cost, shortlists, forecast_context=None):
     """One isolated physical rollout, shared by normal planning and diagnostics."""
     row = {
         'index': int(index), 'reference': action.as_array().tolist(),
@@ -241,7 +262,7 @@ def _evaluate_reference(index, action, plant, goal, terrain, tracks, now, cfg,
     }
     try:
         prediction = predict_reference(plant, action, cfg.horizon_s, cfg.physics_dt, record_controls=False)
-        clear = trajectory_clearance(prediction.states, terrain, tracks, now, cfg)
+        clear = trajectory_clearance(prediction.states, terrain, tracks, now, cfg, forecast_context)
         cost = cost_function(prediction.positions[-1], action, clear, plant, goal)
         if not np.isfinite(cost):
             raise FloatingPointError('full six-DOF reference cost must be finite')
@@ -256,28 +277,31 @@ def _evaluate_reference(index, action, plant, goal, terrain, tracks, now, cfg,
         return None, row
 
 
-def evaluate_reference_grid(plant, goal, terrain, tracks, now, cfg, previous_action=None):
+def evaluate_reference_grid(plant, goal, terrain, tracks, now, cfg, previous_action=None, *,
+                            forecaster=None, uncertainty_by_id=None):
     """Diagnose all reference combinations using only the supplied causal tracks.
 
     This offline API does not command a vehicle and does not read obstacle truth.
-    Its 9/18/45 lists use exactly the default planner's fast ranking/diversity
-    policy. Supply the action selected at the *previous planning decision* to
+    Its 9/18/45 lists use exactly the configured production shortlist policy.
+    Other policies are diagnosed at this same real state without additional
+    physical rollouts. Supply the action selected at the *previous decision* to
     reproduce its smoothness cost. With command delay this can differ from the
     reference currently applied to the real plant. Omitting it explicitly means
     zero history cost.
     """
     tic = time.perf_counter()
-    planner = RemusDWA(cfg)
+    planner = RemusDWA(cfg, forecaster=forecaster)
+    planner.forecasts.begin(uncertainty_by_id)
     if previous_action is not None:
         previous_action.validate(plant)
     planner.previous = previous_action
     goal = np.asarray(goal, dtype=float)
     actions, fast_clear, fast_cost, shortlists = _rank_reference_grid(
-        plant, goal, terrain, tracks, now, cfg, planner._cost)
+        plant, goal, terrain, tracks, now, cfg, planner._cost, planner.forecasts)
     candidates = []
     for index, action in enumerate(actions):
         _, row = _evaluate_reference(index, action, plant, goal, terrain, tracks, now, cfg,
-                                    planner._cost, fast_clear, fast_cost, shortlists)
+                                    planner._cost, fast_clear, fast_cost, shortlists, planner.forecasts)
         candidates.append(row)
     feasible_counts, best_indices, best_costs, coverage = {}, {}, {}, {}
     for budget, members in shortlists.items():
@@ -292,6 +316,21 @@ def evaluate_reference_grid(plant, goal, terrain, tracks, now, cfg, previous_act
                             'heading_value_count': len(np.unique(references[:, 1])),
                             'rpm_value_count': len(np.unique(references[:, 2]))}
     feasible_count = sum(row['feasible'] for row in candidates)
+    policy_indices, policy_feasible_counts, policy_misses = {}, {}, {}
+    for policy in ('diverse', 'ranked', 'coverage'):
+        selector = _shortlist_selector(policy)
+        policy_indices[policy], policy_feasible_counts[policy], policy_misses[policy] = {}, {}, {}
+        for budget in shortlists:
+            members = [int(index) for index in selector(actions, fast_cost, int(budget))]
+            count = sum(candidates[index]['feasible'] for index in members)
+            policy_indices[policy][budget] = members
+            policy_feasible_counts[policy][budget] = count
+            policy_misses[policy][budget] = bool(feasible_count > 0 and count == 0)
+    all_valid = [row for row in candidates if row['feasible']]
+    # For the original <=45 grid retain historical tie ordering. For an
+    # expanded grid, budget45 is a shortlist and must not be called full-grid.
+    full_best = (best_indices['45'] if len(actions) <= 45 else
+                 (min(all_valid, key=lambda row: row['cost'])['index'] if all_valid else None))
     if not feasible_count:
         reason = 'no_feasible_reference_in_full_grid'
     elif not feasible_counts['9']:
@@ -305,10 +344,18 @@ def evaluate_reference_grid(plant, goal, terrain, tracks, now, cfg, previous_act
         'evaluation_ms': (time.perf_counter() - tic) * 1e3,
         'previous_reference': previous_action.as_array().tolist() if previous_action is not None else None,
         'cost_history': 'supplied_previous_reference' if previous_action is not None else 'no_previous_reference',
-        'shortlist_policy': 'baseline_diverse_reference_groups_then_fast_cost',
+        'candidate_scheme': getattr(cfg, 'candidate_scheme', 'baseline45'),
+        'configured_shortlist_policy': getattr(cfg, 'shortlist_policy', 'diverse'),
+        'shortlist_policy': ('baseline_diverse_reference_groups_then_fast_cost'
+                             if getattr(cfg, 'shortlist_policy', 'diverse') == 'diverse'
+                             else getattr(cfg, 'shortlist_policy')),
         'shortlist_indices': shortlists, 'shortlist_feasible_counts': feasible_counts,
         'shortlist_best_feasible_indices': best_indices, 'shortlist_best_feasible_cost': best_costs,
-        'shortlist_coverage': coverage, 'best_feasible_index': best_indices['45'],
+        'shortlist_coverage': coverage, 'best_feasible_index': full_best,
+        'policy_shortlist_indices': policy_indices,
+        'policy_shortlist_feasible_counts': policy_feasible_counts,
+        'policy_shortlist_missed_safe_reference': policy_misses,
+        'planning_goal': goal.tolist(),
         'reason': reason, 'candidates': candidates,
         'validation_backend': 'original_remus100_full_6dof_autopilot_actuators',
         'obstacle_information': 'causal tracks only; no future truth',
@@ -316,19 +363,28 @@ def evaluate_reference_grid(plant, goal, terrain, tracks, now, cfg, previous_act
 
 
 class RemusDWA:
-    """Reference-space DWA baseline; bounded candidate budget plus one fallback.
+    """Reference-space DWA with a bounded full-plant validation budget.
 
-    The CA obstacle baseline and deterministic margin are explicit limitations.
+    CA is the default pluggable obstacle forecast; deterministic margins remain
+    an explicit limitation. Emergency validation uses one coast reference or
+    at most eight configured backup references, without assuming instant stop.
     No candidate is considered safe because its cheap rollout passed a test.
     """
 
-    def __init__(self, cfg):
+    def __init__(self, cfg, forecaster=None):
         cfg.validate()
         self.cfg = cfg
+        self.forecasts = ForecastContext(cfg, forecaster)
+        self.memory_uncertainty = {}
         self.previous: ReferenceAction | None = None
+
+    def set_memory_uncertainty(self, uncertainty_by_id):
+        self.memory_uncertainty = dict(uncertainty_by_id)
 
     def reset(self):
         self.previous = None
+        self.forecasts.begin()
+        self.memory_uncertainty = {}
 
     def _cost(self, endpoint, action, clearance, plant, goal):
         cfg = self.cfg
@@ -348,18 +404,21 @@ class RemusDWA:
     def plan(self, plant, goal, terrain, tracks, now) -> RemusPlanResult:
         tic = time.perf_counter()
         cfg = self.cfg
+        self.forecasts.begin(self.memory_uncertainty)
         goal = np.asarray(goal, dtype=float)
         actions, fast_clear, fast_cost, shortlists = _rank_reference_grid(
-            plant, goal, terrain, tracks, now, cfg, self._cost)
+            plant, goal, terrain, tracks, now, cfg, self._cost, self.forecasts)
         shortlist = shortlists[str(cfg.candidate_budget)]
         valid = []
         failures = 0
         evaluations = []
+        backup_evaluations = []
+        selected_backup_index = None
         for index in shortlist:
             action = actions[index]
             prediction, row = _evaluate_reference(
                 index, action, plant, goal, terrain, tracks, now, cfg,
-                self._cost, fast_clear, fast_cost, shortlists)
+                self._cost, fast_clear, fast_cost, shortlists, self.forecasts)
             evaluations.append(row)
             if row['prediction_failure'] is not None:
                 failures += 1
@@ -376,15 +435,57 @@ class RemusDWA:
             # Cut propulsion while requesting the current depth/heading. Real
             # speed and actuator memory remain intact: this is coasting/drift,
             # not an instantaneous stop and not a guaranteed safe backup.
-            action = ReferenceAction(float(np.clip(plant.eta[2], 0., 100.)), float(plant.eta[5]), cfg.emergency_rpm)
-            prediction = predict_reference(plant, action, cfg.horizon_s, cfg.physics_dt, record_controls=False)
-            states = prediction.states
-            clear = trajectory_clearance(states, terrain, tracks, now, cfg)
+            policy = getattr(cfg, 'emergency_policy', 'coast')
+            if policy == 'coast':
+                action = coast_reference(plant, cfg)
+                prediction = predict_reference(plant, action, cfg.horizon_s, cfg.physics_dt, record_controls=False)
+                states = prediction.states
+                clear = trajectory_clearance(states, terrain, tracks, now, cfg, self.forecasts)
+            elif policy == 'verified_backup':
+                options = []
+                for index, (label, backup) in enumerate(backup_references(plant, goal, cfg)):
+                    row = {'index': index, 'label': label,
+                           'reference': backup.as_array().tolist(), 'feasible': False,
+                           'minimum_predicted_clearance_m': None, 'cost': None,
+                           'prediction_failure': None}
+                    try:
+                        candidate = predict_reference(plant, backup, cfg.horizon_s, cfg.physics_dt,
+                                                      record_controls=False)
+                        gap = trajectory_clearance(candidate.states, terrain, tracks, now, cfg, self.forecasts)
+                        cost = self._cost(candidate.positions[-1], backup, gap, plant, goal)
+                        if not np.isfinite(cost):
+                            raise FloatingPointError('six-DOF backup cost must be finite')
+                        row.update(feasible=bool(gap >= cfg.safety_margin_m),
+                                   minimum_predicted_clearance_m=float(gap), cost=float(cost))
+                        options.append((index, backup, candidate.states, float(gap), float(cost)))
+                    except (FloatingPointError, OverflowError) as error:
+                        failures += 1
+                        row['prediction_failure'] = f'{type(error).__name__}: {error}'
+                    backup_evaluations.append(row)
+                safe = [option for option in options if option[3] >= cfg.safety_margin_m]
+                if safe:
+                    selected = min(safe, key=lambda option: option[4])
+                else:
+                    # Prefer the unchanged coast when it has a finite rollout.
+                    # A numeric coast failure cannot become a fabricated stop.
+                    finite_coast = [option for option in options if option[0] == 0]
+                    if finite_coast:
+                        selected = finite_coast[0]
+                    elif options:
+                        selected = max(options, key=lambda option: option[3])
+                    else:
+                        raise FloatingPointError('all REMUS backup rollouts failed numerically; no executable forecast')
+                selected_backup_index, action, states, clear, _ = selected
+            else:
+                raise ValueError(f'unknown REMUS emergency_policy: {policy}')
             feasible = False
             emergency = True
             emergency_safe = clear >= cfg.safety_margin_m
             reason = ('no_verified_feasible_reference_emergency_coast_forecast_clear'
                       if emergency_safe else 'no_verified_feasible_reference_emergency_not_safe')
+            if policy == 'verified_backup':
+                reason = ('no_verified_feasible_reference_verified_backup_forecast_clear'
+                          if emergency_safe else 'no_verified_feasible_reference_no_safe_backup')
         self.previous = action
         return RemusPlanResult(
             action=action, states=states, feasible=feasible, candidate_count=len(actions),
@@ -394,4 +495,13 @@ class RemusDWA:
             emergency=emergency, reason=reason, emergency_verified_safe=bool(emergency_safe),
             prediction_failure_count=failures, candidate_evaluations=tuple(evaluations),
             shortlist_indices=shortlists,
+            candidate_scheme=getattr(cfg, 'candidate_scheme', 'baseline45'),
+            shortlist_policy=getattr(cfg, 'shortlist_policy', 'diverse'),
+            emergency_policy=getattr(cfg, 'emergency_policy', 'coast'),
+            backup_evaluations=tuple(backup_evaluations),
+            backup_verified_count=len(backup_evaluations),
+            backup_safe_count=sum(row['feasible'] for row in backup_evaluations),
+            selected_backup_index=selected_backup_index,
+            planning_goal=tuple(float(value) for value in goal),
+            forecast_records=tuple(self.forecasts.records),
         )
