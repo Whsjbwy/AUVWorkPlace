@@ -101,26 +101,26 @@ Perlin共同运行无应急、平均8.94/9个候选可行、预测/执行位置�
 当前README、[PROTOCOL.md](PROTOCOL.md)和[RISK_METHODS.md](RISK_METHODS.md)均已明确以下区别，正式报告必须继续保留：
 
 - A3/A4保留阶段4joint球/候选最近集合间隙分数的**算法形式**，但用本轮匹配的新校准池重算q。这里frozen表示没有在线更新，不等于旧artifact原数值冻结复现。
-- 阶段4原B1/B2实现、`artifacts_stage4/ca_scene_calibration_v1.npz`及108次历史结果完整保留。本pilot尚未把旧artifact在新场景中重跑，不能声称已经完成那个数值敏感性对照。
+- 阶段4原B1/B2实现、`artifacts_stage4/ca_scene_calibration_v1.npz`及108次历史结果完整保留。30次DEV pilot本身没有混入旧工件；后续已另运行4次旧工件历史敏感性，见[独立报告](HISTORICAL_FROZEN_RESULTS.md)，不纳入本pilot或A0–A5主结果。
 - 新A3/A4使用活跃完整场景，排除无障碍零分数；旧库24场景含8个真空场景。新旧观测来源也不同。因此不能把新主比较与阶段4原add成功率直接混合。
 - A2恢复按预测步和观测速度组分别标定的P25式结构，但增加完整场景内最大值聚合，使用本项目两个观测速度组、CA和新传感数据。它不是原P25论文全协议或PPLNM模型的忠实完整复现。
 - 新校准载体是固定直线感知载体，不是实际REMUS执行。载体可能穿越障碍/海床，只定义采集条件；与闭环FOV和失联分布存在协变量漂移。刚体对齐不证明交换性，有限样本阶数公式不消除这种漂移。
 
-## 可补充的最小旧数值敏感性方案（尚未执行）
+## 已执行的最小旧数值敏感性补充
 
-为澄清“原冻结”措辞，可补充独立历史敏感性，主formal配置和阈值保持不动：
+为澄清“原冻结”措辞，已另行执行独立历史敏感性，主formal配置和阈值保持不动：
 
 1. 固定使用已预登记add子集的首个静态与交叉formal test：`s5_formal_static3d_g14_s520014`、`s5_formal_crossing3d_g14_s521014`，噪声0.02米。
 2. 各运行原阶段4`RiskPolicy('B1'/'B2', artifacts_stage4/ca_scene_calibration_v1.npz, alpha=.1)`，保持原add包络和同一新场景、CA、45/9候选、REMUS及实际1米标准，共4个额外episode。
 3. 与相同两场景的新A3/A4 **add**结果配对。不能直接拿旧add与新replace差异声称只有校准工件作用。A0可引用相同登记场景的正式结果，无需为了增加分母重复执行。
 4. 使用`H4_B1_original`/`H4_B2_original`独立标签和CSV，不混入A0–A5主结果。披露旧数据载体、空场景处理及新场景分布偏移，称为完整旧冻结数值协议敏感性，不称为仅改变一个quantile的纯消融。
 
-独立入口`scripts_stage5/historical_frozen.py`已经实现，5项针对测试通过；目前尚未启动这4次历史实验。它固定上述场景、旧库、alpha和add，只提供输出目录、1/2worker、图像及动画选项，避免临时改变比较对象。先协调释放CPU槽位再执行，例如：
+独立入口`scripts_stage5/historical_frozen.py`的5项针对测试通过。协调释放CPU槽位后，实际以2workers运行4次，session44092退出码0、0个程序异常。两次静态均超时；两次交叉均实际安全到达，旧B1/B2用时分别198.72/164.58秒；四次均无实际碰撞或1米违规，但均有危险应急预测、有限验收均失败。逐run完整参数、来源、时间轴、因果历史、日志与summary一致性核对全部通过，真实命令为：
 
 ```powershell
-.\.venv-stage1\Scripts\python.exe -m scripts_stage5.historical_frozen --workers 1 --out results_stage5\historical_frozen_review
+.\.venv-stage1\Scripts\python.exe -u -m scripts_stage5.historical_frozen --workers 2 --out results_stage5/formal_historical_frozen_20261012
 ```
 
-上述只是已经实现的补充入口，不表示已经运行。两个几何的补充也不足以作统计认证。是否继续研究ECP应等待A1、formal未见场景、同状态归因及独占计时，而不是根据本DEV表修改冻结参数或追加算法复杂度。
+完整console日志为`results_stage5/formal_historical_frozen_20261012.log`，配置、CSV、所有失败raw与图均保存在同名结果目录。详细来源差异、实测表格、初始可行性和失联反馈见[HISTORICAL_FROZEN_RESULTS.md](HISTORICAL_FROZEN_RESULTS.md)。两个几何不足以作统计认证。是否继续研究ECP须综合A1、formal未见场景、同状态归因及独占计时，而不是根据本DEV表修改冻结参数或追加算法复杂度。
 
 本pilot为多worker同步离线执行，物理时钟没有注入规划计算延迟。并发P95不能用于公平实时性能结论。本次审查没有改变任何风险阈值、碰撞判定、物理参数、场景或正式测试配置。

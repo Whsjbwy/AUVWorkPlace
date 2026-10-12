@@ -48,7 +48,10 @@ def test_measured_latency_rounds_up_and_serial_worker_cannot_overlap(monkeypatch
     save_remus_episode(result, tmp_path/'measured', plot=False)
     saved = json.loads((tmp_path/'measured/selected_plans.json').read_text())
     assert saved[0]['command_application_time_s'] == 1.26
-    assert saved[2]['command_application_time_s'] > result['states'][-1, 0]
+    assert saved[0]['command_ready_time_s'] == 1.26
+    assert saved[2]['command_application_time_s'] is None
+    assert saved[2]['command_ready_time_s'] > result['states'][-1, 0]
+    assert [p['command_application_time_s'] for p in saved if p['command_application_time_s'] is not None] == [e['time_s'] for e in applications]
 
 
 def test_computation_delay_adds_transport_delay_without_early_application():

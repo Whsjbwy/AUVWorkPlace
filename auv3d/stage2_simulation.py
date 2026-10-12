@@ -175,10 +175,11 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
             # A single worker cannot begin another decision while busy. Missed
             # periods are recorded; no future command is applied early.
             next_planning_step = step + max(control_n, computation_steps)
-            pending_commands.append((ready_time, t, plan))
+            pending_commands.append((ready_time, t, plan, len(plans)))
             planning.append([t,plan.planning_ms,plan.candidate_count,plan.verified_count,plan.valid_count,
                              plan.minimum_predicted_clearance_m,len(tracks),int(plan.feasible),plan.prediction_fallback_count])
-            plans.append({'time_s':t,'command_application_time_s':ready_time,
+            plans.append({'time_s':t,'command_ready_time_s':ready_time,
+                          'command_application_time_s':None,
                           'planning_computation_delay_s':computation_delay_s,
                           'action':[plan.action.depth_m,plan.action.heading_rad,plan.action.rpm],
                           'states':plan.states.copy(),'feasible':plan.feasible,
@@ -217,7 +218,8 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
                 events.append({'time_s':t,'kind':'emergency','position':plant.eta[:3].tolist(),
                                'reason':plan.reason,'forecast_clear':plan.emergency_verified_safe})
         while pending_commands and pending_commands[0][0] <= t+1e-9:
-            _, plan_time, executing_plan = pending_commands.pop(0)
+            _, plan_time, executing_plan, plan_index = pending_commands.pop(0)
+            plans[plan_index]['command_application_time_s'] = t
             action = executing_plan.action
             if cfg.command_delay_s or planning_delay_mode != 'none':
                 events.append({'time_s':t,'kind':'delayed_command_applied',

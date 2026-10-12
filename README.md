@@ -1,5 +1,7 @@
 # AUVWorkPlace
 
+阶段5实际完成916项测试、200次登记风险实验（含开发、调参、正式及延迟，不能当200个独立测试场景）。正式12场景中A1与A5均11次实际安全到达；当前证据建议**停止把本ECP适配作为论文主路线**，保留平台和负结果。见[选题决定](docs_stage5/DECISION.md)、[公平主结果](docs_stage5/RESULTS.md)、[完整测试](docs_stage5/TEST_REPORT.md)、[预测器噪声与闭环](docs_stage5/PREDICTOR_CLOSED_LOOP_RESULTS.md)、[单worker计时及物理延迟](docs_stage5/DELAY_ANALYSIS.md)、[失败分析](docs_stage5/FAILURE_ANALYSIS.md)。大型原始数据与ZIP单独保存，不提交Git。
+
 阶段5增加风险公平性验证入口[A0–A5方法说明](docs_stage5/RISK_METHODS.md)、[独立数据协议](docs_stage5/PROTOCOL.md)和[PowerShell运行方法](docs_stage5/RUNNING.md)。A1在独立tune场景选择固定裕量；A2按预测时刻及观测速度分组；A3/A4保留阶段4分数形式但用新的匹配校准池；A5为待验证的逐时刻候选相关工程适配。CA、CV与滤波CV分别校准，add/replace单独记录。所有方案保留原REMUS、真实1米净间隙与5米到达判据，阶段4代码、校准和108次历史实验保留。
 
 ```powershell

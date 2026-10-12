@@ -53,8 +53,14 @@ def plot_comparison(case_dirs, out, anchor_s=40.):
             _draw_obstacles(ax,common_snapshot)
         for method,case in cases.items():
             points = _points(case['states'])
+            summary = case['summary']
+            if summary['status'] == 'success':
+                outcome = ('arrived; actual >=1m' if summary['actual_safety_margin_met']
+                           else 'arrived; actual <1m')
+            else:
+                outcome = summary['status']
             ax.plot(*points.T,color=COLORS[method],lw=2,
-                label=f"{method} actual REMUS | {case['summary']['status']}")
+                label=f'{method} actual REMUS | {outcome}')
             ax.scatter(*points[-1],marker='x',color=COLORS[method],s=40)
             if show_predictions and available[method]:
                 plan = _exact_record(case['plans'],anchor_s)
