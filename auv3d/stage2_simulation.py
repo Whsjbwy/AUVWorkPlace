@@ -320,8 +320,9 @@ def run_remus_episode(cfg=None, scenario='crossing3d', *, on_plan=None, risk_pol
         'command_delay_s':cfg.command_delay_s,
         'prediction_position_rmse_m':float(np.sqrt(np.mean(errors[:,3]**2))) if len(errors) else None,
         'prediction_position_max_error_m':float(np.max(errors[:,3])) if len(errors) else None,
-        'prediction_error_scope':('active selected prediction at its absolute decision time; includes mismatch from fixed command delay'
-                                  if cfg.command_delay_s else 'selected reference held until next replanning; matching deterministic original plant'),
+        'prediction_error_scope':('active selected prediction at its absolute decision time; includes mismatch from computation and/or transport latency under the previous reference'
+                                  if cfg.command_delay_s or planning_delay_mode != 'none'
+                                  else 'selected reference held until next replanning; matching deterministic original plant'),
         'control_log_time_convention':'time_s is interval start; raw/applied commands act over [time_s,time_s+physics_dt]; actual actuator columns are interval-end samples',
         'all_states_finite':bool(np.isfinite(states).all()),'wall_clock_s':time.perf_counter()-started,
         'physics_dt_s':dt,'control_dt_s':cfg.control_dt,'candidate_budget':cfg.candidate_budget,

@@ -7,6 +7,9 @@
 | 原PVS及阶段1–4完整回归 | 753项通过，0失败/错误/跳过，55.365秒 | `results_stage5/quality_legacy_20261012/junit.xml` |
 | 当时版本全部回归 | 889项通过，0失败/错误/跳过，77.715秒；后续增加来源与噪声等测试，最终计数另记 | `results_stage5/quality_complete_initial_20261012/junit.xml` |
 | 当前源码完整回归 | **910项通过，0失败/错误/跳过，84.655秒**；包括原753项及新增157项 | `results_stage5/quality_source_verified_20261012/junit.xml` |
+| 渲染与误差范围修正后完整回归 | **911项通过，0失败/错误/跳过，88.964秒**；包括原753项及新增158项 | `results_stage5/quality_final_source_20261012/junit.xml` |
+| 历史冻结对照入口加入后完整回归 | **916项通过，0失败/错误/跳过，86.108秒**；包括原753项及新增163项 | `results_stage5/quality_with_historical_20261012/junit.xml` |
+| 远端CPU CI | Python3.12的Windows及Ubuntu两项job均成功，包含依赖及原有/新增测试 | GitHub Actions run 38216111562，对应首次源码提交 |
 | 小规模开发闭环 | 6个新dev场景 × A0/A2/A3/A4/A5，共30次实际REMUS执行，0程序异常；碰撞和超时保留，不是全安全通过 | `results_stage5/pilot_development_20261012/` |
 | 原REMUS自动驾驶20秒回归 | 1001状态全部有限，最终深度8.012034米、航向18.007489度；仅为原响应回归，不宣称20秒已经稳态 | `results_stage5/remus_regression_20261012/` |
 | 完整empty3d闭环 | 84.92秒到达，实际最小净间隙29.175962米，无应急，预测/执行位置误差0 | `results_stage5/empty_regression_20261012/` |

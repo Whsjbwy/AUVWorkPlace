@@ -14,6 +14,8 @@
 | `auv3d/stage2_simulation.py` | 可选注入预测器和共同场景；新增none/fixed/measured规划延迟。延迟期间原模型、障碍及感知继续推进，命令按就绪时刻生效；原默认行为数值保留。 |
 | `auv3d/stage4_diagnostics.py` | 仅新增可选scene/forecaster参数，以准确重放新几何及预测器；默认旧调用不变。 |
 | `run_stage5.py`、`scripts_stage5/` | PowerShell可用的构库、调参、闭环、独立噪声诊断和分析入口。 |
+| `scripts_stage5/render_saved.py` | 从保存的真实积分、障碍快照和预测记录生成图/GIF/交互回放，不重复执行任务或覆盖原始日志；图上使用实际注入预测器。 |
+| `scripts_stage5/historical_frozen.py` | 单独补充旧阶段4校准文件原数值与原add协议的四次敏感性检查，不混入重新匹配校准的六法主比较。 |
 | `configs/stage5_formal_study.json` | 在正式test前冻结主比较、A1选择规则、add消融、预测器子集、同状态计时及延迟实验。 |
 | `tests_stage5/` | 风险几何、时间对齐、来源防错、延迟物理执行、控制器隔离、真实短闭环、图像与日志回归。所有旧测试保留。 |
 | README、AGENTS、CPU CI、`docs_stage5/` | 更新入口、真实边界和可复制流程，CI包含阶段5。 |
@@ -21,3 +23,5 @@
 确定的程序修复包括：A1 pilot调参文件误用于formal、CA原始数据误登记为CV、直接deepcopy含GNC模块的真实REMUS导致shadow异常；均有修复前复现和修复后拒绝/通路证据。开发中的测试字典访问和图标题字符串拼接错误也已修正，首次失败日志保留。
 
 没有增加ECP在线ACP、PPLNM训练、新网络、应急控制策略或电能节省模型。A5是待验证工程适配；filtered CV只平滑速度估计。校准载体不是REMUS航迹，存在感知/ego协变量漂移，不能声称任务概率安全保证。
+
+另修正延迟模式的误差范围文字：measured/fixed计算延迟产生的偏差明确包含旧控制指令持续执行的影响，不再误写为无延迟确定性匹配。数值积分和原默认执行不变。

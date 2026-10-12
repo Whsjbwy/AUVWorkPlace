@@ -27,6 +27,7 @@ def test_fixed_computation_holds_old_reference_and_keeps_obstacles_and_sensing_a
     assert result['obstacles'][-1]['positions'] != result['obstacles'][0]['positions']
     assert result['summary']['planning_computation_delay_max_s'] == .5
     assert result['summary']['prediction_position_max_error_m'] > .001
+    assert 'latency under the previous reference' in result['summary']['prediction_error_scope']
 
 
 def test_measured_latency_rounds_up_and_serial_worker_cannot_overlap(monkeypatch, tmp_path):
@@ -72,3 +73,4 @@ def test_none_mode_retains_legacy_trajectory_exactly():
     explicit = run_remus_episode(config(), 'static3d', planning_delay_mode='none')
     for field in ('states', 'controls', 'clearance', 'prediction_errors'):
         np.testing.assert_array_equal(plain[field], explicit[field])
+    assert 'matching deterministic original plant' in explicit['summary']['prediction_error_scope']

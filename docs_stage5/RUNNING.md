@@ -156,3 +156,21 @@ no-feasible decision fraction, planning P95/deadlines, actual delay and offline 
 `EXPERIMENT_RECORDS.json`, `GROUPED_SUMMARY.json`, per-case raw files and all
 failure traces remain available for review. Exit code 0 means no program error;
 it does not mean every navigation task succeeded.
+
+## Render saved executions without rerunning a mission
+
+Choose a completed `cases/<job_id>` directory and a fresh output directory:
+
+```powershell
+$env:PYTHONUTF8='1'
+$env:MPLBACKEND='Agg'
+.\.venv-stage1\Scripts\python.exe -m scripts_stage5.render_saved --case results_stage5/<study>/cases/<job_id> --out results_stage5/<new-figures> --frames 40
+```
+
+This exports the original seabed, recorded actual six-DOF trajectory, separate
+selected predictions, error/control plots, a GIF and a self-contained
+`replay_3d.html`. The renderer reads saved data and never executes a new mission
+or overwrites the source. GIF frames use recorded obstacle snapshot times;
+HTML allows rotation, zoom and time replay. `FIGURE_SOURCES.json` identifies
+the original episode and actual injected predictor. Display downsampling is
+independent of full-resolution collision verification.
